@@ -9,8 +9,7 @@ import './App.css';
 function App() {
   const [session, setSession] = useState(null);
   const [username, setUsername] = useState('');
-  const [isGuest, setIsGuest] = useState(false);
-  const [showUsernameModal, setShowUsernameModal] = useState(true);
+  const [showAuthModal, setShowAuthModal] = useState(true);
   const [places, setPlaces] = useState([]);
   const [previewedPlace, setPreviewedPlace] = useState(null);
   const [joinedPlace, setJoinedPlace] = useState(null);
@@ -27,14 +26,16 @@ function App() {
       if (currentSession) {
         applySession(currentSession);
       } else {
-        applyGuestFromStorage();
+        setShowAuthModal(true);
       }
 
       const { data: authListener } = supabase.auth.onAuthStateChange((_event, newSession) => {
         if (newSession) {
           applySession(newSession);
         } else {
-          applyGuestFromStorage();
+          setSession(null);
+          setUsername('');
+          setShowAuthModal(true);
         }
       });
 
@@ -51,25 +52,9 @@ function App() {
 
   const applySession = (currentSession) => {
     setSession(currentSession);
-    setIsGuest(false);
     setUsername(extractUsername(currentSession));
-    setShowUsernameModal(false);
+    setShowAuthModal(false);
     upsertProfile(currentSession);
-  };
-
-  const applyGuestFromStorage = () => {
-    const stored = localStorage.getItem('guest_username') || '';
-    if (stored) {
-      setSession(null);
-      setIsGuest(true);
-      setUsername(stored);
-      setShowUsernameModal(false);
-    } else {
-      setSession(null);
-      setIsGuest(false);
-      setUsername('');
-      setShowUsernameModal(true);
-    }
   };
 
   const extractUsername = (currentSession) => {
@@ -137,15 +122,8 @@ function App() {
     // Auth was successful, modal will close automatically on session change
   };
 
-  const handleGuestContinue = (name) => {
-    localStorage.setItem('guest_username', name);
-    setSession(null);
-    setIsGuest(true);
-    setUsername(name);
-    setShowUsernameModal(false);
-  };
-
   const handleSignOut = async () => {
+    localStorage.removeItem('guest_username');
     await supabase.auth.signOut();
   };
 
@@ -168,23 +146,16 @@ function App() {
 
   return (
     <div className="app">
-      {showUsernameModal && (
-        <AuthModal 
-          onAuthSuccess={handleAuthSuccess} 
-          onGuestContinue={handleGuestContinue} 
-        />
+      {showAuthModal && (
+        <AuthModal onAuthSuccess={handleAuthSuccess} />
       )}
-      
+
       <div className="app-header">
         <h1>PlaceConnect</h1>
         <div className="user-info">
-          <span>👤 {username || 'Guest'}</span>
-          {session ? (
+          <span>{username}</span>
+          {session && (
             <button onClick={handleSignOut}>Sign out</button>
-          ) : (
-            <button onClick={() => setShowUsernameModal(true)}>
-              {isGuest ? 'Switch account' : 'Sign in'}
-            </button>
           )}
         </div>
       </div>

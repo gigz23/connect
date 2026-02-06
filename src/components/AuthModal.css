@@ -133,7 +133,7 @@
 /* Tab Navigation */
 .auth-tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-columns: 1fr 1fr;
   gap: 0.5rem;
   margin-bottom: 1.5rem;
   border-bottom: 2px solid #e2e8f0;
@@ -269,14 +269,6 @@
 }
 
 /* Additional Text */
-.auth-guest-note {
-  font-size: 0.85rem;
-  color: #64748b;
-  text-align: center;
-  margin-top: 1rem;
-  margin-bottom: 0;
-}
-
 .auth-disclaimer {
   margin-top: 1.5rem;
   font-size: 0.8rem;
@@ -300,7 +292,7 @@
   }
 
   .auth-tabs {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr;
     gap: 0.3rem;
   }
 
@@ -330,7 +322,7 @@
   }
 
   .auth-tabs {
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: 1fr 1fr;
   }
 
   .auth-tab {

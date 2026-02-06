@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import './AuthModal.css';
 
-const AuthModal = ({ onAuthSuccess, onGuestContinue }) => {
-  const [tab, setTab] = useState('login'); // 'login', 'signup', or 'guest'
+const AuthModal = ({ onAuthSuccess }) => {
+  const [tab, setTab] = useState('login'); // 'login' or 'signup'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -114,27 +114,6 @@ const AuthModal = ({ onAuthSuccess, onGuestContinue }) => {
     }
   };
 
-  const handleGuestSubmit = (e) => {
-    e.preventDefault();
-    setError('');
-
-    const trimmed = name.trim();
-    if (!trimmed) {
-      setError('Please enter a name to continue as guest.');
-      return;
-    }
-    if (trimmed.length < 2) {
-      setError('Name must be at least 2 characters.');
-      return;
-    }
-    if (trimmed.length > 20) {
-      setError('Name must be less than 20 characters.');
-      return;
-    }
-
-    onGuestContinue(trimmed);
-  };
-
   return (
     <div className="auth-modal-overlay">
       <div className="auth-modal-content">
@@ -188,16 +167,6 @@ const AuthModal = ({ onAuthSuccess, onGuestContinue }) => {
             }}
           >
             Sign Up
-          </button>
-          <button
-            className={`auth-tab ${tab === 'guest' ? 'active' : ''}`}
-            onClick={() => {
-              setTab('guest');
-              setError('');
-              setSuccessMessage('');
-            }}
-          >
-            Guest
           </button>
         </div>
 
@@ -320,38 +289,8 @@ const AuthModal = ({ onAuthSuccess, onGuestContinue }) => {
           </form>
         )}
 
-        {/* Guest Tab */}
-        {tab === 'guest' && (
-          <form onSubmit={handleGuestSubmit} className="auth-form">
-            <div className="auth-form-group">
-              <label htmlFor="guest-name">Your Name</label>
-              <input
-                id="guest-name"
-                type="text"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  setError('');
-                }}
-                placeholder="What should we call you?"
-                className="auth-input"
-              />
-            </div>
-
-            {error && <div className="auth-error">{error}</div>}
-
-            <button type="submit" className="auth-submit-btn">
-              Continue as Guest
-            </button>
-
-            <p className="auth-guest-note">
-              You can always sign in later to save your profile
-            </p>
-          </form>
-        )}
-
         <p className="auth-disclaimer">
-          We use Google, email, or your guest name to show who you are in chat.
+          Sign in with Google or email to join the conversation.
         </p>
       </div>
     </div>
