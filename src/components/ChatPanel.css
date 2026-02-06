@@ -153,14 +153,27 @@
   background-color: white;
 }
 
-.message-input {
+.input-wrapper {
   flex: 1;
+  position: relative;
+}
+
+.message-input {
+  width: 100%;
   padding: 0.75rem 1rem;
   border: 1px solid #e2e8f0;
   border-radius: 8px;
   font-size: 0.95rem;
   outline: none;
   transition: border-color 0.2s;
+}
+
+.char-count {
+  position: absolute;
+  right: 0.5rem;
+  top: -1.25rem;
+  font-size: 0.7rem;
+  color: #94a3b8;
 }
 
 .message-input:focus {
@@ -183,7 +196,12 @@
   background-color: #2563eb;
 }
 
-.send-btn:active {
+.send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.send-btn:active:not(:disabled) {
   transform: scale(0.98);
 }
 

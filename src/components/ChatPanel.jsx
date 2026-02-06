@@ -2,6 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import './ChatPanel.css';
 
+const MAX_MESSAGE_LENGTH = 500;
+
 const ChatPanel = ({ place, username, onClose }) => {
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
@@ -88,14 +90,15 @@ const ChatPanel = ({ place, username, onClose }) => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
-    if (!newMessage.trim()) return;
+    const trimmed = newMessage.trim();
+    if (!trimmed || trimmed.length > MAX_MESSAGE_LENGTH) return;
 
     const { error } = await supabase
       .from('messages')
       .insert({
         place_id: place.id,
         username: username,
-        content: newMessage.trim(),
+        content: trimmed,
         created_at: new Date().toISOString()
       });
 
@@ -152,14 +155,22 @@ const ChatPanel = ({ place, username, onClose }) => {
       </div>
 
       <form className="message-input-container" onSubmit={handleSendMessage}>
-        <input
-          type="text"
-          value={newMessage}
-          onChange={(e) => setNewMessage(e.target.value)}
-          placeholder={`Message ${place.name}...`}
-          className="message-input"
-        />
-        <button type="submit" className="send-btn">
+        <div className="input-wrapper">
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            placeholder={`Message ${place.name}...`}
+            className="message-input"
+            maxLength={MAX_MESSAGE_LENGTH}
+          />
+          {newMessage.length > MAX_MESSAGE_LENGTH * 0.8 && (
+            <span className="char-count">
+              {newMessage.length}/{MAX_MESSAGE_LENGTH}
+            </span>
+          )}
+        </div>
+        <button type="submit" className="send-btn" disabled={!newMessage.trim()}>
           Send
         </button>
       </form>

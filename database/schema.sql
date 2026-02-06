@@ -28,6 +28,16 @@ CREATE TABLE messages (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
+-- Profiles table (linked to Supabase Auth users)
+CREATE TABLE profiles (
+  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  full_name TEXT,
+  avatar_url TEXT,
+  email TEXT,
+  updated_at TIMESTAMP WITH TIME ZONE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
 -- Indexes for performance
 CREATE INDEX idx_messages_place_id ON messages(place_id);
 CREATE INDEX idx_messages_created_at ON messages(created_at DESC);
@@ -37,6 +47,7 @@ CREATE INDEX idx_places_location ON places(latitude, longitude);
 -- Enable Row Level Security
 ALTER TABLE places ENABLE ROW LEVEL SECURITY;
 ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 -- RLS Policies - Allow all operations for now (adjust based on your needs)
 CREATE POLICY "Public read access on places" 
@@ -58,6 +69,19 @@ CREATE POLICY "Public read access on messages"
 CREATE POLICY "Public insert access on messages" 
   ON messages FOR INSERT 
   WITH CHECK (true);
+
+-- Profiles policies (users can read/update their own profile)
+CREATE POLICY "Users can view their profile"
+  ON profiles FOR SELECT
+  USING (auth.uid() = id);
+
+CREATE POLICY "Users can insert their profile"
+  ON profiles FOR INSERT
+  WITH CHECK (auth.uid() = id);
+
+CREATE POLICY "Users can update their profile"
+  ON profiles FOR UPDATE
+  USING (auth.uid() = id);
 
 -- Function to clean old messages (optional - keeps database lean)
 CREATE OR REPLACE FUNCTION cleanup_old_messages()
