@@ -63,6 +63,68 @@ body {
   color: white;
 }
 
+.header-avatar-btn {
+  padding: 0 !important;
+  border: none !important;
+  background: none !important;
+  border-radius: 50% !important;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+}
+
+.header-avatar-btn:hover {
+  background: none !important;
+  opacity: 0.8;
+}
+
+.header-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.notification-wrapper {
+  position: relative;
+}
+
+.notification-bell-btn {
+  padding: 0.35rem !important;
+  border: none !important;
+  background: none !important;
+  color: #64748b !important;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  border-radius: 6px !important;
+}
+
+.notification-bell-btn:hover {
+  background: #f1f5f9 !important;
+  color: #1e293b !important;
+}
+
+.notification-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background: #ef4444;
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  min-width: 16px;
+  height: 16px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  line-height: 1;
+}
+
 .app-content {
   flex: 1;
   display: flex;

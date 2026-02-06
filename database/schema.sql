@@ -23,6 +23,7 @@ CREATE TABLE places (
 CREATE TABLE messages (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   place_id UUID NOT NULL REFERENCES places(id) ON DELETE CASCADE,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
   username VARCHAR(50) NOT NULL,
   content TEXT NOT NULL,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -41,6 +42,7 @@ CREATE TABLE profiles (
 -- Indexes for performance
 CREATE INDEX idx_messages_place_id ON messages(place_id);
 CREATE INDEX idx_messages_created_at ON messages(created_at DESC);
+CREATE INDEX idx_messages_user_id ON messages(user_id);
 CREATE INDEX idx_places_activity ON places(activity_level DESC);
 CREATE INDEX idx_places_location ON places(latitude, longitude);
 
@@ -70,10 +72,10 @@ CREATE POLICY "Public insert access on messages"
   ON messages FOR INSERT 
   WITH CHECK (true);
 
--- Profiles policies (users can read/update their own profile)
-CREATE POLICY "Users can view their profile"
-  ON profiles FOR SELECT
-  USING (auth.uid() = id);
+-- Profiles policies
+CREATE POLICY "Authenticated users can view all profiles"
+  ON profiles FOR SELECT TO authenticated
+  USING (true);
 
 CREATE POLICY "Users can insert their profile"
   ON profiles FOR INSERT
@@ -128,6 +130,38 @@ INSERT INTO places (name, type, latitude, longitude, address, description, image
   ('Mziuri Park', 'park', 41.7150, 44.7550, 'Saburtalo District', 'Large park with sports facilities', 'https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=500&h=300&fit=crop'),
   ('Terminal', 'cafe', 41.6945, 44.8010, '12 Atoneli St', 'Popular cafe for students', 'https://images.unsplash.com/photo-1442512595331-e89e6e0acbe0?w=500&h=300&fit=crop');
 
+-- FK from messages to profiles (for Supabase joins)
+ALTER TABLE messages ADD CONSTRAINT messages_profile_fkey
+  FOREIGN KEY (user_id) REFERENCES profiles(id) ON DELETE SET NULL;
+
+-- Friendships table
+CREATE TABLE friendships (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  requester_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  addressee_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  status VARCHAR(20) NOT NULL DEFAULT 'pending',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  CONSTRAINT unique_friendship UNIQUE (requester_id, addressee_id),
+  CONSTRAINT no_self_friend CHECK (requester_id != addressee_id)
+);
+
+ALTER TABLE friendships ENABLE ROW LEVEL SECURITY;
+
+-- Friendships RLS policies
+CREATE POLICY "View own friendships" ON friendships FOR SELECT
+  USING (auth.uid() = requester_id OR auth.uid() = addressee_id);
+
+CREATE POLICY "Send friend requests" ON friendships FOR INSERT
+  WITH CHECK (auth.uid() = requester_id);
+
+CREATE POLICY "Update own friendships" ON friendships FOR UPDATE
+  USING (auth.uid() = addressee_id OR auth.uid() = requester_id);
+
+CREATE POLICY "Delete own friendships" ON friendships FOR DELETE
+  USING (auth.uid() = requester_id OR auth.uid() = addressee_id);
+
 -- Enable Realtime for all tables
 ALTER PUBLICATION supabase_realtime ADD TABLE places;
 ALTER PUBLICATION supabase_realtime ADD TABLE messages;
+ALTER PUBLICATION supabase_realtime ADD TABLE friendships;

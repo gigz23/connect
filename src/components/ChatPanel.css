@@ -92,13 +92,36 @@
 
 .message {
   display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
+  flex-direction: row;
+  gap: 0.5rem;
   max-width: 80%;
+  align-items: flex-start;
 }
 
 .message.own-message {
   align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.message-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.message-avatar:hover {
+  opacity: 0.8;
+}
+
+.message-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  min-width: 0;
 }
 
 .message-header {
