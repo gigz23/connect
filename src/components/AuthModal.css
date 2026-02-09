@@ -29,6 +29,8 @@
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
   max-width: 420px;
   width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
   animation: slideUp 0.4s ease-out;
 }
 
@@ -41,6 +43,25 @@
     transform: translateY(0);
     opacity: 1;
   }
+}
+
+/* Scrollbar for auth modal */
+.auth-modal-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.auth-modal-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.auth-modal-content::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 10px;
+}
+
+.auth-modal-content {
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
 }
 
 .auth-header {
@@ -281,6 +302,7 @@
   .auth-modal-content {
     padding: 1.5rem;
     border-radius: 12px;
+    max-height: 85vh;
   }
 
   .auth-header h2 {
@@ -315,6 +337,7 @@
   .auth-modal-content {
     padding: 1.25rem;
     margin: 1rem;
+    max-height: 80vh;
   }
 
   .auth-header h2 {

@@ -2,8 +2,8 @@
   position: absolute;
   top: 100%;
   right: 0;
-  width: 320px;
-  max-height: 400px;
+  width: 340px;
+  max-height: 450px;
   background: white;
   border-radius: 12px;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
@@ -36,7 +36,7 @@
 }
 
 .friend-requests-list {
-  max-height: 340px;
+  max-height: 380px;
   overflow-y: auto;
 }
 
@@ -45,6 +45,15 @@
   text-align: center;
   color: #94a3b8;
   font-size: 0.9rem;
+}
+
+.notification-section-label {
+  padding: 0.5rem 1rem 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .friend-request-item {
@@ -87,6 +96,13 @@
 
 .friend-request-name:hover {
   color: #3b82f6;
+}
+
+.friend-request-label {
+  font-size: 0.75rem;
+  color: #94a3b8;
+  display: block;
+  margin-top: 2px;
 }
 
 .friend-request-actions {

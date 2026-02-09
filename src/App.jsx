@@ -8,6 +8,20 @@ import FriendRequestsList from './components/FriendRequestsList';
 import { supabase } from './lib/supabase';
 import './App.css';
 
+const getPlaceEmoji = (type) => {
+  const icons = {
+    school: '\u{1F3EB}', university: '\u{1F393}', college: '\u{1F393}', library: '\u{1F4DA}',
+    cafe: '\u{2615}', coffee: '\u{2615}', restaurant: '\u{1F37D}\u{FE0F}', bar: '\u{1F37A}',
+    bakery: '\u{1F950}', basketball_court: '\u{1F3C0}', sports_court: '\u{1F3C0}',
+    tennis_court: '\u{1F3BE}', gym: '\u{1F4AA}', fitness: '\u{1F4AA}', park: '\u{1F333}',
+    playground: '\u{1F3AA}', pool: '\u{1F3CA}', coworking: '\u{1F4BC}', office: '\u{1F3E2}',
+    startup_hub: '\u{1F680}', hospital: '\u{1F3E5}', pharmacy: '\u{1F48A}', church: '\u{26EA}',
+    museum: '\u{1F3DB}\u{FE0F}', shopping: '\u{1F6CD}\u{FE0F}', hotel: '\u{1F3E8}',
+    bank: '\u{1F3E6}', market: '\u{1F3EA}', cinema: '\u{1F3AC}'
+  };
+  return icons[type] || '\u{1F4CD}';
+};
+
 function App() {
   const [session, setSession] = useState(null);
   const [username, setUsername] = useState('');
@@ -19,7 +33,24 @@ function App() {
   const [profileModalUserId, setProfileModalUserId] = useState(null);
   const [showFriendRequests, setShowFriendRequests] = useState(false);
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
+
+  // Search
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [flyToPlace, setFlyToPlace] = useState(null);
+
+  // Favorites
+  const [favorites, setFavorites] = useState(() => {
+    try {
+      const saved = localStorage.getItem('placeconnect_favorites');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
+  const [showFavoritesPanel, setShowFavoritesPanel] = useState(false);
+
   const friendReqChannelRef = useRef(null);
+  const notificationRef = useRef(null);
+  const searchRef = useRef(null);
 
   useEffect(() => {
     loadPlaces();
@@ -58,6 +89,33 @@ function App() {
       authSubscription?.unsubscribe?.();
       cleanupFriendReqSubscription();
     };
+  }, []);
+
+  // Save favorites to localStorage
+  useEffect(() => {
+    localStorage.setItem('placeconnect_favorites', JSON.stringify(favorites));
+  }, [favorites]);
+
+  // Close notification dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (showFriendRequests && notificationRef.current && !notificationRef.current.contains(e.target)) {
+        setShowFriendRequests(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showFriendRequests]);
+
+  // Close search when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (searchRef.current && !searchRef.current.contains(e.target)) {
+        setSearchResults([]);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const cleanupFriendReqSubscription = () => {
@@ -217,6 +275,44 @@ function App() {
     }
   };
 
+  // Search
+  const handleSearchChange = (query) => {
+    setSearchQuery(query);
+    if (query.trim()) {
+      const results = places.filter(p =>
+        p.name.toLowerCase().includes(query.toLowerCase())
+      );
+      setSearchResults(results);
+    } else {
+      setSearchResults([]);
+    }
+  };
+
+  const handleSearchSelect = (place) => {
+    setSearchQuery('');
+    setSearchResults([]);
+    setFlyToPlace(place);
+    setPreviewedPlace(place);
+  };
+
+  // Favorites
+  const handleToggleFavorite = (placeId) => {
+    setFavorites(prev => {
+      if (prev.includes(placeId)) {
+        return prev.filter(id => id !== placeId);
+      }
+      return [...prev, placeId];
+    });
+  };
+
+  const handleFavoriteClick = (place) => {
+    setShowFavoritesPanel(false);
+    setFlyToPlace(place);
+    setJoinedPlace(place);
+  };
+
+  const favoritePlaces = places.filter(p => favorites.includes(p.id));
+
   const currentUserId = session?.user?.id;
 
   return (
@@ -227,6 +323,44 @@ function App() {
 
       <div className="app-header">
         <h1>PlaceConnect</h1>
+
+        {/* Search bar */}
+        <div className="search-wrapper" ref={searchRef}>
+          <svg className="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Search places..."
+            value={searchQuery}
+            onChange={(e) => handleSearchChange(e.target.value)}
+          />
+          {searchResults.length > 0 && (
+            <div className="search-results">
+              {searchResults.map(place => (
+                <div
+                  key={place.id}
+                  className="search-result-item"
+                  onClick={() => handleSearchSelect(place)}
+                >
+                  <span className="search-result-emoji">{getPlaceEmoji(place.type)}</span>
+                  <div className="search-result-info">
+                    <div className="search-result-name">{place.name}</div>
+                    <div className="search-result-type">{place.type.replace('_', ' ')}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {searchQuery.trim() && searchResults.length === 0 && (
+            <div className="search-results">
+              <div className="search-no-results">No places found</div>
+            </div>
+          )}
+        </div>
+
         <div className="user-info">
           {session && (
             <>
@@ -243,11 +377,11 @@ function App() {
                 />
               </button>
               <span>{username}</span>
-              <div className="notification-wrapper">
+              <div className="notification-wrapper" ref={notificationRef}>
                 <button
                   className="notification-bell-btn"
                   onClick={() => setShowFriendRequests(prev => !prev)}
-                  title="Friend requests"
+                  title="Notifications"
                 >
                   <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
@@ -276,6 +410,7 @@ function App() {
           places={places}
           selectedPlace={joinedPlace}
           onPlaceSelect={handlePlaceSelect}
+          flyToPlace={flyToPlace}
         />
 
         {previewedPlace && (
@@ -283,6 +418,8 @@ function App() {
             place={previewedPlace}
             onJoin={handleJoinChat}
             onClose={handleClosePreview}
+            isFavorite={favorites.includes(previewedPlace.id)}
+            onToggleFavorite={handleToggleFavorite}
           />
         )}
 
@@ -294,6 +431,56 @@ function App() {
             onClose={handleCloseChat}
             onProfileClick={handleProfileClick}
           />
+        )}
+
+        {/* Favorites FAB */}
+        <button
+          className="favorites-fab"
+          onClick={() => setShowFavoritesPanel(prev => !prev)}
+          title="Favorite places"
+        >
+          {'\u{1F4AC}'}
+          {favoritePlaces.length > 0 && (
+            <span className="fab-badge">{favoritePlaces.length}</span>
+          )}
+        </button>
+
+        {/* Favorites panel */}
+        {showFavoritesPanel && (
+          <div className="favorites-panel">
+            <div className="favorites-panel-header">
+              <h3>{'\u{2B50}'} Favorite Places</h3>
+              <button
+                className="favorites-panel-close"
+                onClick={() => setShowFavoritesPanel(false)}
+              >
+                {'\u2715'}
+              </button>
+            </div>
+            <div className="favorites-list">
+              {favoritePlaces.length === 0 ? (
+                <div className="favorites-empty">
+                  <span>{'\u{2606}'}</span>
+                  No favorite places yet. Click the star on any place to add it here.
+                </div>
+              ) : (
+                favoritePlaces.map(place => (
+                  <div
+                    key={place.id}
+                    className="favorite-item"
+                    onClick={() => handleFavoriteClick(place)}
+                  >
+                    <div className="favorite-item-emoji">{getPlaceEmoji(place.type)}</div>
+                    <div className="favorite-item-info">
+                      <div className="favorite-item-name">{place.name}</div>
+                      <div className="favorite-item-type">{place.type.replace('_', ' ')}</div>
+                    </div>
+                    <span className="favorite-item-arrow">{'\u203A'}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
         )}
       </div>
 

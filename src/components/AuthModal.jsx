@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 import './AuthModal.css';
 
 const AuthModal = ({ onAuthSuccess }) => {
-  const [tab, setTab] = useState('login'); // 'login' or 'signup'
+  const [tab, setTab] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -34,7 +34,6 @@ const AuthModal = ({ onAuthSuccess }) => {
     setError('');
     setSuccessMessage('');
 
-    // Validation
     if (!email.trim()) {
       setError('Email is required');
       return;
@@ -60,19 +59,35 @@ const AuthModal = ({ onAuthSuccess }) => {
         options: {
           data: {
             full_name: name.trim() || email.split('@')[0]
-          }
+          },
+          emailRedirectTo: window.location.origin
         }
       });
 
       if (signUpError) {
         setError(signUpError.message);
       } else if (data?.user) {
-        setSuccessMessage('Account created! Signing you in...');
-        setEmail('');
-        setPassword('');
-        setConfirmPassword('');
-        setName('');
-        setTimeout(() => onAuthSuccess(), 1500);
+        // Check if email confirmation is required
+        if (data.session) {
+          // Auto-confirmed (email confirmation disabled in Supabase settings)
+          setSuccessMessage('Account created! Signing you in...');
+          setEmail('');
+          setPassword('');
+          setConfirmPassword('');
+          setName('');
+          setTimeout(() => onAuthSuccess(), 1500);
+        } else {
+          // Email confirmation required
+          setSuccessMessage(
+            'Account created! Please check your email inbox (and spam folder) for a verification link to confirm your account. Once confirmed, you can sign in.'
+          );
+          setEmail('');
+          setPassword('');
+          setConfirmPassword('');
+          setName('');
+          // Switch to login tab after a delay so user knows to sign in after confirming
+          setTimeout(() => setTab('login'), 5000);
+        }
       }
     } catch (err) {
       setError('An error occurred. Please try again.');
@@ -85,7 +100,6 @@ const AuthModal = ({ onAuthSuccess }) => {
     e.preventDefault();
     setError('');
 
-    // Validation
     if (!email.trim()) {
       setError('Email is required');
       return;
@@ -103,7 +117,13 @@ const AuthModal = ({ onAuthSuccess }) => {
       });
 
       if (loginError) {
-        setError(loginError.message);
+        if (loginError.message === 'Email not confirmed') {
+          setError(
+            'Your email has not been confirmed yet. Please check your inbox (and spam folder) for the verification email, or try signing up again to resend it.'
+          );
+        } else {
+          setError(loginError.message);
+        }
       } else if (data?.user) {
         onAuthSuccess();
       }
@@ -122,7 +142,6 @@ const AuthModal = ({ onAuthSuccess }) => {
           <p>Connect with locals and explore amazing places together</p>
         </div>
 
-        {/* Google Sign-In Button - Always visible */}
         <div className="auth-google-section">
           <button
             type="button"
@@ -146,7 +165,6 @@ const AuthModal = ({ onAuthSuccess }) => {
           <span>or</span>
         </div>
 
-        {/* Tab Navigation */}
         <div className="auth-tabs">
           <button
             className={`auth-tab ${tab === 'login' ? 'active' : ''}`}
@@ -170,7 +188,6 @@ const AuthModal = ({ onAuthSuccess }) => {
           </button>
         </div>
 
-        {/* Login Tab */}
         {tab === 'login' && (
           <form onSubmit={handleEmailLogin} className="auth-form">
             <div className="auth-form-group">
@@ -206,6 +223,7 @@ const AuthModal = ({ onAuthSuccess }) => {
             </div>
 
             {error && <div className="auth-error">{error}</div>}
+            {successMessage && <div className="auth-success">{successMessage}</div>}
 
             <button type="submit" className="auth-submit-btn" disabled={loading}>
               {loading ? 'Signing in...' : 'Sign In'}
@@ -213,7 +231,6 @@ const AuthModal = ({ onAuthSuccess }) => {
           </form>
         )}
 
-        {/* Sign Up Tab */}
         {tab === 'signup' && (
           <form onSubmit={handleEmailSignUp} className="auth-form">
             <div className="auth-form-group">
