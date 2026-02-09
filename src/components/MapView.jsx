@@ -7,13 +7,19 @@ const MapView = ({ places, selectedPlace, onPlaceSelect, flyToPlace }) => {
   const mapRef = useRef(null);
   const mapInstanceRef = useRef(null);
   const markersRef = useRef({});
+  const onPlaceSelectRef = useRef(onPlaceSelect);
+
+  // Keep the callback ref up to date without re-creating markers
+  useEffect(() => {
+    onPlaceSelectRef.current = onPlaceSelect;
+  }, [onPlaceSelect]);
 
   useEffect(() => {
     if (!mapInstanceRef.current) {
       mapInstanceRef.current = L.map(mapRef.current).setView([41.7151, 44.8271], 13);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
+        attribution: '© OpenStreetMap contributors'
       }).addTo(mapInstanceRef.current);
     }
 
@@ -61,11 +67,11 @@ const MapView = ({ places, selectedPlace, onPlaceSelect, flyToPlace }) => {
 
       const marker = L.marker([place.latitude, place.longitude], { icon })
         .addTo(mapInstanceRef.current)
-        .on('click', () => onPlaceSelect(place));
+        .on('click', () => onPlaceSelectRef.current(place));
 
       markersRef.current[place.id] = marker;
     });
-  }, [places, selectedPlace, onPlaceSelect]);
+  }, [places, selectedPlace]);
 
   const getActivityColor = (level) => {
     if (level === 0) return '#94a3b8';
@@ -76,37 +82,15 @@ const MapView = ({ places, selectedPlace, onPlaceSelect, flyToPlace }) => {
 
   const getPlaceIcon = (type) => {
     const icons = {
-      school: '\u{1F3EB}',
-      university: '\u{1F393}',
-      college: '\u{1F393}',
-      library: '\u{1F4DA}',
-      cafe: '\u{2615}',
-      coffee: '\u{2615}',
-      restaurant: '\u{1F37D}\u{FE0F}',
-      bar: '\u{1F37A}',
-      bakery: '\u{1F950}',
-      basketball_court: '\u{1F3C0}',
-      sports_court: '\u{1F3C0}',
-      tennis_court: '\u{1F3BE}',
-      gym: '\u{1F4AA}',
-      fitness: '\u{1F4AA}',
-      park: '\u{1F333}',
-      playground: '\u{1F3AA}',
-      pool: '\u{1F3CA}',
-      coworking: '\u{1F4BC}',
-      office: '\u{1F3E2}',
-      startup_hub: '\u{1F680}',
-      hospital: '\u{1F3E5}',
-      pharmacy: '\u{1F48A}',
-      church: '\u{26EA}',
-      museum: '\u{1F3DB}\u{FE0F}',
-      shopping: '\u{1F6CD}\u{FE0F}',
-      hotel: '\u{1F3E8}',
-      bank: '\u{1F3E6}',
-      market: '\u{1F3EA}',
-      cinema: '\u{1F3AC}'
+      school: '🏫', university: '🎓', college: '🎓', library: '📚',
+      cafe: '☕', coffee: '☕', restaurant: '🍽️', bar: '🍺', bakery: '🥐',
+      basketball_court: '🏀', sports_court: '🏀', tennis_court: '🎾',
+      gym: '💪', fitness: '💪', park: '🌳', playground: '🎪', pool: '🏊',
+      coworking: '💼', office: '🏢', startup_hub: '🚀',
+      hospital: '🏥', pharmacy: '💊', church: '⛪', museum: '🏛️',
+      shopping: '🛍️', hotel: '🏨', bank: '🏦', market: '🏪', cinema: '🎬'
     };
-    return icons[type] || '\u{1F4CD}';
+    return icons[type] || '📍';
   };
 
   return (

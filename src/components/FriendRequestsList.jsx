@@ -9,21 +9,40 @@ const FriendRequestsList = ({ currentUserId, onClose, onProfileClick }) => {
   useEffect(() => {
     fetchRequests();
     const cleanup = subscribeToRequests();
-
-    return () => {
-      cleanup();
-    };
+    return () => { cleanup(); };
   }, []);
 
   const fetchRequests = async () => {
-    const { data } = await supabase
+    // Fetch friendships first
+    const { data: friendshipData } = await supabase
       .from('friendships')
-      .select('*, requester:profiles!friendships_requester_id_fkey(id, full_name, avatar_url)')
+      .select('*')
       .eq('addressee_id', currentUserId)
       .eq('status', 'pending')
       .order('created_at', { ascending: false });
 
-    setRequests(data || []);
+    if (!friendshipData || friendshipData.length === 0) {
+      setRequests([]);
+      setLoading(false);
+      return;
+    }
+
+    // Fetch profiles for all requesters separately
+    const requesterIds = friendshipData.map(f => f.requester_id);
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url')
+      .in('id', requesterIds);
+
+    const profileMap = {};
+    (profilesData || []).forEach(p => { profileMap[p.id] = p; });
+
+    const enriched = friendshipData.map(f => ({
+      ...f,
+      requester: profileMap[f.requester_id] || null
+    }));
+
+    setRequests(enriched);
     setLoading(false);
   };
 
@@ -37,15 +56,11 @@ const FriendRequestsList = ({ currentUserId, onClose, onProfileClick }) => {
           table: 'friendships',
           filter: `addressee_id=eq.${currentUserId}`
         },
-        () => {
-          fetchRequests();
-        }
+        () => { fetchRequests(); }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   };
 
   const handleAccept = async (friendshipId) => {
@@ -66,10 +81,23 @@ const FriendRequestsList = ({ currentUserId, onClose, onProfileClick }) => {
     setRequests(prev => prev.filter(r => r.id !== friendshipId));
   };
 
+  const handleClearAll = async () => {
+    // Reject all pending requests
+    for (const req of requests) {
+      await supabase.from('friendships').delete().eq('id', req.id);
+    }
+    setRequests([]);
+  };
+
   return (
     <div className="friend-requests-dropdown">
       <div className="friend-requests-header">
         <h3>Notifications</h3>
+        {requests.length > 0 && (
+          <button className="clear-all-btn" onClick={handleClearAll}>
+            Clear all
+          </button>
+        )}
       </div>
 
       <div className="friend-requests-list">
@@ -78,53 +106,48 @@ const FriendRequestsList = ({ currentUserId, onClose, onProfileClick }) => {
         ) : requests.length === 0 ? (
           <div className="friend-requests-empty">No new notifications</div>
         ) : (
-          <>
-            {requests.length > 0 && (
-              <div className="notification-section-label">Friend Requests</div>
-            )}
-            {requests.map(request => (
-              <div key={request.id} className="friend-request-item">
-                <img
-                  src={request.requester?.avatar_url || '/default-avatar.svg'}
-                  alt={request.requester?.full_name || 'User'}
-                  className="friend-request-avatar"
-                  onClick={() => {
-                    onProfileClick(request.requester_id);
-                    onClose();
-                  }}
-                  onError={(e) => { e.target.src = '/default-avatar.svg'; }}
-                />
-                <div className="friend-request-info">
-                  <span
-                    className="friend-request-name"
+          requests.map(request => (
+            <div key={request.id} className="friend-request-item">
+              <img
+                src={request.requester?.avatar_url || '/default-avatar.svg'}
+                alt={request.requester?.full_name || 'User'}
+                className="friend-request-avatar"
+                onClick={() => {
+                  onProfileClick(request.requester_id);
+                  onClose();
+                }}
+                onError={(e) => { e.target.src = '/default-avatar.svg'; }}
+              />
+              <div className="friend-request-info">
+                <span className="friend-request-text">
+                  <strong
+                    className="friend-request-name-link"
                     onClick={() => {
                       onProfileClick(request.requester_id);
                       onClose();
                     }}
                   >
-                    {request.requester?.full_name || 'Anonymous'}
-                  </span>
-                  <span className="friend-request-label">wants to be your friend</span>
-                </div>
-                <div className="friend-request-actions">
+                    {request.requester?.full_name || 'Someone'}
+                  </strong>
+                  {' '}has sent you a friend request
+                </span>
+                <div className="friend-request-actions-row">
                   <button
-                    className="friend-accept-btn"
+                    className="friend-action-accept"
                     onClick={() => handleAccept(request.id)}
-                    title="Accept"
                   >
-                    &#10003;
+                    Accept
                   </button>
                   <button
-                    className="friend-reject-btn"
+                    className="friend-action-decline"
                     onClick={() => handleReject(request.id)}
-                    title="Decline"
                   >
-                    &#10005;
+                    Decline
                   </button>
                 </div>
               </div>
-            ))}
-          </>
+            </div>
+          ))
         )}
       </div>
     </div>

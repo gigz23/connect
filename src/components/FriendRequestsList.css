@@ -2,7 +2,7 @@
   position: absolute;
   top: 100%;
   right: 0;
-  width: 340px;
+  width: 360px;
   max-height: 450px;
   background: white;
   border-radius: 12px;
@@ -27,12 +27,33 @@
 .friend-requests-header {
   padding: 0.75rem 1rem;
   border-bottom: 1px solid #f1f5f9;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .friend-requests-header h3 {
   font-size: 0.95rem;
   color: #1e293b;
   font-weight: 600;
+  margin: 0;
+}
+
+.clear-all-btn {
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  transition: all 0.15s;
+}
+
+.clear-all-btn:hover {
+  background: #eff6ff;
+  color: #2563eb;
 }
 
 .friend-requests-list {
@@ -47,20 +68,11 @@
   font-size: 0.9rem;
 }
 
-.notification-section-label {
-  padding: 0.5rem 1rem 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 700;
-  color: #94a3b8;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
 .friend-request-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.75rem;
-  padding: 0.75rem 1rem;
+  padding: 0.85rem 1rem;
   border-bottom: 1px solid #f8fafc;
   transition: background 0.15s;
 }
@@ -70,8 +82,8 @@
 }
 
 .friend-request-avatar {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   object-fit: cover;
   cursor: pointer;
@@ -83,65 +95,55 @@
   min-width: 0;
 }
 
-.friend-request-name {
-  font-size: 0.9rem;
-  font-weight: 600;
+.friend-request-text {
+  font-size: 0.88rem;
+  color: #475569;
+  line-height: 1.4;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
+.friend-request-name-link {
   color: #1e293b;
   cursor: pointer;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  display: block;
 }
 
-.friend-request-name:hover {
+.friend-request-name-link:hover {
   color: #3b82f6;
+  text-decoration: underline;
 }
 
-.friend-request-label {
-  font-size: 0.75rem;
-  color: #94a3b8;
-  display: block;
-  margin-top: 2px;
-}
-
-.friend-request-actions {
+.friend-request-actions-row {
   display: flex;
-  gap: 0.35rem;
-  flex-shrink: 0;
+  gap: 0.5rem;
 }
 
-.friend-accept-btn,
-.friend-reject-btn {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  border: none;
+.friend-action-accept,
+.friend-action-decline {
+  padding: 0.35rem 0.85rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 0.85rem;
-  font-weight: 700;
-  transition: all 0.2s;
+  border: none;
+  transition: all 0.15s;
 }
 
-.friend-accept-btn {
-  background: #dcfce7;
-  color: #22c55e;
-}
-
-.friend-accept-btn:hover {
-  background: #22c55e;
+.friend-action-accept {
+  background: #3b82f6;
   color: white;
 }
 
-.friend-reject-btn {
-  background: #fee2e2;
-  color: #ef4444;
+.friend-action-accept:hover {
+  background: #2563eb;
 }
 
-.friend-reject-btn:hover {
-  background: #ef4444;
-  color: white;
+.friend-action-decline {
+  background: #f1f5f9;
+  color: #64748b;
+}
+
+.friend-action-decline:hover {
+  background: #e2e8f0;
+  color: #1e293b;
 }

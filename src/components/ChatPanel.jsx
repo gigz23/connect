@@ -14,7 +14,6 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
   const [showOnlineUsers, setShowOnlineUsers] = useState(false);
   const [onlineSearchQuery, setOnlineSearchQuery] = useState('');
   const [showCameraMenu, setShowCameraMenu] = useState(false);
-  const [hoveredMessage, setHoveredMessage] = useState(null);
   const [showMessageMenu, setShowMessageMenu] = useState(null);
   const [showReactionPicker, setShowReactionPicker] = useState(null);
   const messagesEndRef = useRef(null);
@@ -440,16 +439,13 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
           messages.map((msg, index) => {
             const isOwn = msg.user_id ? msg.user_id === userId : msg.username === username;
             const isUnsent = msg.content === '__UNSENT__';
+            const isMedia = msg.content.startsWith('__MEDIA__');
             const msgReactions = groupReactions(reactions[msg.id]);
 
             return (
               <div
                 key={msg.id || index}
                 className={`message-wrapper ${isOwn ? 'own' : ''}`}
-                onMouseEnter={() => !isUnsent && setHoveredMessage(msg.id)}
-                onMouseLeave={() => {
-                  setHoveredMessage(null);
-                }}
               >
                 <div className={`message ${isOwn ? 'own-message' : ''}`}>
                   {!isOwn && (
@@ -466,9 +462,72 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
                       <span className="message-username">{getMessageDisplayName(msg)}</span>
                       <span className="message-time">{formatTime(msg.created_at)}</span>
                     </div>
-                    <div className="message-content">
+                    <div className={`message-content${isMedia ? ' media-content' : ''}${isUnsent ? ' unsent-content' : ''}`}>
                       {renderMessageContent(msg)}
                     </div>
+
+                    {/* Always-visible action buttons (like Facebook) */}
+                    {!isUnsent && (
+                      <div className="message-actions-inline" onClick={e => e.stopPropagation()}>
+                        <button
+                          className="inline-react-btn"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setShowReactionPicker(showReactionPicker === msg.id ? null : msg.id);
+                            setShowMessageMenu(null);
+                          }}
+                          title="React"
+                        >
+                          {'\u{1F600}'}
+                        </button>
+                        {isOwn && (
+                          <button
+                            className="inline-menu-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowMessageMenu(showMessageMenu === msg.id ? null : msg.id);
+                              setShowReactionPicker(null);
+                            }}
+                            title="More options"
+                          >
+                            {'\u22EF'}
+                          </button>
+                        )}
+
+                        {/* Reaction picker popup */}
+                        {showReactionPicker === msg.id && (
+                          <div className="reaction-picker" onClick={e => e.stopPropagation()}>
+                            {QUICK_EMOJIS.map(emoji => (
+                              <button
+                                key={emoji}
+                                onClick={() => handleReaction(msg.id, emoji)}
+                              >
+                                {emoji}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Three-dots menu for own messages */}
+                        {showMessageMenu === msg.id && (
+                          <div className="message-menu" onClick={e => e.stopPropagation()}>
+                            <button onClick={() => {
+                              setShowReactionPicker(msg.id);
+                              setShowMessageMenu(null);
+                            }}>
+                              {'\u{1F600}'} React
+                            </button>
+                            <button
+                              className="unsend-btn"
+                              onClick={() => handleUnsend(msg.id)}
+                            >
+                              {'\u{1F6AB}'} Unsend
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {msgReactions.length > 0 && (
                       <div className="message-reactions">
                         {msgReactions.map(({ emoji, count, hasOwn }) => (
@@ -489,68 +548,6 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
                     )}
                   </div>
                 </div>
-
-                {/* Action buttons on hover */}
-                {hoveredMessage === msg.id && !isUnsent && (
-                  <div className="message-actions" onClick={e => e.stopPropagation()}>
-                    <button
-                      className="action-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowReactionPicker(showReactionPicker === msg.id ? null : msg.id);
-                        setShowMessageMenu(null);
-                      }}
-                      title="React"
-                    >
-                      {'\u{1F600}'}
-                    </button>
-                    {isOwn && (
-                      <button
-                        className="action-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setShowMessageMenu(showMessageMenu === msg.id ? null : msg.id);
-                          setShowReactionPicker(null);
-                        }}
-                        title="More options"
-                      >
-                        {'\u22EF'}
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {/* Reaction picker popup */}
-                {showReactionPicker === msg.id && (
-                  <div className="reaction-picker" onClick={e => e.stopPropagation()}>
-                    {QUICK_EMOJIS.map(emoji => (
-                      <button
-                        key={emoji}
-                        onClick={() => handleReaction(msg.id, emoji)}
-                      >
-                        {emoji}
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Three-dots menu for own messages */}
-                {showMessageMenu === msg.id && (
-                  <div className="message-menu" onClick={e => e.stopPropagation()}>
-                    <button onClick={() => {
-                      setShowReactionPicker(msg.id);
-                      setShowMessageMenu(null);
-                    }}>
-                      {'\u{1F600}'} React
-                    </button>
-                    <button
-                      className="unsend-btn"
-                      onClick={() => handleUnsend(msg.id)}
-                    >
-                      {'\u{1F6AB}'} Unsend
-                    </button>
-                  </div>
-                )}
               </div>
             );
           })

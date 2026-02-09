@@ -197,69 +197,78 @@
   font-size: 0.9rem;
 }
 
+/* Media content - remove bubble styling for images/videos */
+.message-content.media-content {
+  background: none !important;
+  padding: 0 !important;
+  border-radius: 0 !important;
+}
+
+.message-content.unsent-content {
+  background: #f8fafc !important;
+  color: #94a3b8 !important;
+}
+
 /* Media messages */
 .chat-media-image {
   max-width: 220px;
   max-height: 200px;
-  border-radius: 8px;
+  border-radius: 12px;
   cursor: pointer;
   object-fit: cover;
+  display: block;
 }
 
 .chat-media-video {
   max-width: 220px;
   max-height: 200px;
-  border-radius: 8px;
+  border-radius: 12px;
+  display: block;
 }
 
-/* Message action buttons (hover) */
-.message-actions {
+/* Always-visible inline action buttons (Facebook-style) */
+.message-actions-inline {
   display: flex;
   gap: 2px;
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 5;
-  animation: actionsFadeIn 0.1s ease-out;
+  align-items: center;
+  margin-top: 2px;
+  position: relative;
 }
 
-.message-wrapper:not(.own) .message-actions {
-  right: -60px;
-}
-
-.message-wrapper.own .message-actions {
-  left: -60px;
-}
-
-@keyframes actionsFadeIn {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-.action-btn {
-  width: 28px;
-  height: 28px;
+.inline-react-btn,
+.inline-menu-btn {
+  width: 26px;
+  height: 26px;
   border: none;
-  background: white;
+  background: transparent;
   border-radius: 50%;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.85rem;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.12);
+  font-size: 0.8rem;
+  color: #94a3b8;
   transition: all 0.15s;
+  padding: 0;
 }
 
-.action-btn:hover {
+.inline-react-btn:hover,
+.inline-menu-btn:hover {
   background: #f1f5f9;
-  transform: scale(1.1);
+  transform: scale(1.15);
+}
+
+.inline-menu-btn {
+  font-size: 1rem;
+  font-weight: bold;
+  letter-spacing: 1px;
 }
 
 /* Reaction picker popup */
 .reaction-picker {
   position: absolute;
   bottom: calc(100% + 4px);
+  left: 0;
   display: flex;
   gap: 2px;
   background: white;
@@ -270,11 +279,8 @@
   animation: pickerPop 0.15s ease-out;
 }
 
-.message-wrapper:not(.own) .reaction-picker {
-  left: 40px;
-}
-
 .message-wrapper.own .reaction-picker {
+  left: auto;
   right: 0;
 }
 
@@ -312,6 +318,7 @@
 .message-menu {
   position: absolute;
   bottom: calc(100% + 4px);
+  left: 0;
   background: white;
   border-radius: 12px;
   padding: 4px;
@@ -322,6 +329,7 @@
 }
 
 .message-wrapper.own .message-menu {
+  left: auto;
   right: 0;
 }
 
@@ -669,18 +677,6 @@
   .chat-panel {
     width: 100%;
     max-width: 100%;
-  }
-
-  .message-actions {
-    position: static;
-    transform: none;
-    margin-top: 2px;
-  }
-
-  .message-wrapper:not(.own) .message-actions,
-  .message-wrapper.own .message-actions {
-    left: auto;
-    right: auto;
   }
 }
 
