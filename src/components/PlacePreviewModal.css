@@ -172,7 +172,7 @@
 }
 
 /* Content wrapper */
-.place-preview-modal > *:not(.close-btn):not(.preview-image-container) {
+.place-preview-modal > *:not(.close-btn):not(.preview-image-container):not(.edit-image-row) {
   padding: 0 2rem;
 }
 
