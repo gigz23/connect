@@ -142,6 +142,35 @@
   to { transform: rotate(360deg); }
 }
 
+/* Edit image text row below the image */
+.edit-image-row {
+  padding: 0.5rem 2rem;
+}
+
+.edit-image-text-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: #3b82f6;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+  transition: color 0.15s;
+}
+
+.edit-image-text-btn:hover:not(:disabled) {
+  color: #2563eb;
+  text-decoration: underline;
+}
+
+.edit-image-text-btn:disabled {
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
 /* Content wrapper */
 .place-preview-modal > *:not(.close-btn):not(.preview-image-container) {
   padding: 0 2rem;
