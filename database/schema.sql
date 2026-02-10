@@ -150,7 +150,7 @@ ALTER TABLE friendships ENABLE ROW LEVEL SECURITY;
 
 -- Friendships RLS policies
 CREATE POLICY "View own friendships" ON friendships FOR SELECT
-  USING (auth.uid() = requester_id OR auth.uid() = addressee_id);
+  USING (auth.uid() = requester_id OR auth.uid() = addressee_id OR status = 'accepted');
 
 CREATE POLICY "Send friend requests" ON friendships FOR INSERT
   WITH CHECK (auth.uid() = requester_id);
