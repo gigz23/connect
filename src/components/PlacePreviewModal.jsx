@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import './PlacePreviewModal.css';
 
-const ADMIN_USER_ID = '2ad81a31-80c4-457d-983b-a71ccb417b4f';
+const ADMIN_USER_ID = '9d6c2419-e7e2-41ac-95ce-83a98f0f595d';
 
 const PlacePreviewModal = ({ place, onJoin, onClose, isFavorite, onToggleFavorite, currentUserId, onPlaceUpdate }) => {
   const [onlineUsers, setOnlineUsers] = useState(0);
@@ -13,7 +13,6 @@ const PlacePreviewModal = ({ place, onJoin, onClose, isFavorite, onToggleFavorit
   const [uploading, setUploading] = useState(false);
   const imageInputRef = useRef(null);
 
-  console.log('DEBUG currentUserId:', currentUserId, 'ADMIN_USER_ID:', ADMIN_USER_ID, 'place.created_by:', place.created_by);
   const isAdmin = currentUserId === ADMIN_USER_ID;
   const isCreator = place.created_by && place.created_by === currentUserId;
   const canEditImage = isAdmin || isCreator;
