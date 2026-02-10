@@ -20,6 +20,13 @@ function App() {
   const [profileModalUserId, setProfileModalUserId] = useState(null);
   const [showFriendRequests, setShowFriendRequests] = useState(false);
   const [pendingRequestCount, setPendingRequestCount] = useState(0);
+  const [acceptedNotifications, setAcceptedNotifications] = useState([]);
+  const [seenAcceptances, setSeenAcceptances] = useState(() => {
+    try {
+      const saved = localStorage.getItem('placeconnect_seen_acceptances');
+      return saved ? JSON.parse(saved) : [];
+    } catch { return []; }
+  });
 
   // Search
   const [searchQuery, setSearchQuery] = useState('');
@@ -41,6 +48,7 @@ function App() {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const friendReqChannelRef = useRef(null);
+  const acceptedReqChannelRef = useRef(null);
   const notificationRef = useRef(null);
   const searchRef = useRef(null);
   const expiryIntervalRef = useRef(null);
@@ -98,6 +106,11 @@ function App() {
     localStorage.setItem('placeconnect_favorites', JSON.stringify(favorites));
   }, [favorites]);
 
+  // Save seen acceptances to localStorage
+  useEffect(() => {
+    localStorage.setItem('placeconnect_seen_acceptances', JSON.stringify(seenAcceptances));
+  }, [seenAcceptances]);
+
   // Close notification dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -125,6 +138,10 @@ function App() {
       supabase.removeChannel(friendReqChannelRef.current);
       friendReqChannelRef.current = null;
     }
+    if (acceptedReqChannelRef.current) {
+      supabase.removeChannel(acceptedReqChannelRef.current);
+      acceptedReqChannelRef.current = null;
+    }
   };
 
   const applySession = async (currentSession) => {
@@ -134,7 +151,9 @@ function App() {
     await upsertProfile(currentSession);
     await fetchFullProfile(currentSession.user.id);
     fetchPendingRequestCount(currentSession.user.id);
+    fetchAcceptedNotifications(currentSession.user.id);
     subscribeToPendingRequests(currentSession.user.id);
+    subscribeToAcceptedRequests(currentSession.user.id);
   };
 
   const extractUsername = (currentSession) => {
@@ -191,7 +210,10 @@ function App() {
   };
 
   const subscribeToPendingRequests = (uid) => {
-    cleanupFriendReqSubscription();
+    if (friendReqChannelRef.current) {
+      supabase.removeChannel(friendReqChannelRef.current);
+      friendReqChannelRef.current = null;
+    }
 
     friendReqChannelRef.current = supabase
       .channel('pending-friend-requests')
@@ -204,6 +226,65 @@ function App() {
         },
         () => {
           fetchPendingRequestCount(uid);
+        }
+      )
+      .subscribe();
+  };
+
+  const fetchAcceptedNotifications = async (uid) => {
+    const saved = JSON.parse(localStorage.getItem('placeconnect_seen_acceptances') || '[]');
+
+    const { data } = await supabase
+      .from('friendships')
+      .select('*')
+      .eq('requester_id', uid)
+      .eq('status', 'accepted');
+
+    if (!data || data.length === 0) {
+      setAcceptedNotifications([]);
+      return;
+    }
+
+    const unseen = data.filter(f => !saved.includes(f.id));
+    if (unseen.length === 0) {
+      setAcceptedNotifications([]);
+      return;
+    }
+
+    const addresseeIds = unseen.map(f => f.addressee_id);
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url')
+      .in('id', addresseeIds);
+
+    const profileMap = {};
+    (profiles || []).forEach(p => { profileMap[p.id] = p; });
+
+    const enriched = unseen.map(f => ({
+      ...f,
+      addressee: profileMap[f.addressee_id] || null
+    }));
+
+    setAcceptedNotifications(enriched);
+  };
+
+  const subscribeToAcceptedRequests = (uid) => {
+    if (acceptedReqChannelRef.current) {
+      supabase.removeChannel(acceptedReqChannelRef.current);
+      acceptedReqChannelRef.current = null;
+    }
+
+    acceptedReqChannelRef.current = supabase
+      .channel('accepted-friend-requests')
+      .on('postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'friendships',
+          filter: `requester_id=eq.${uid}`
+        },
+        () => {
+          fetchAcceptedNotifications(uid);
         }
       )
       .subscribe();
@@ -449,8 +530,8 @@ function App() {
                     <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                     <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
                   </svg>
-                  {pendingRequestCount > 0 && (
-                    <span className="notification-badge">{pendingRequestCount}</span>
+                  {(pendingRequestCount + acceptedNotifications.length) > 0 && (
+                    <span className="notification-badge">{pendingRequestCount + acceptedNotifications.length}</span>
                   )}
                 </button>
                 {showFriendRequests && (
@@ -458,6 +539,16 @@ function App() {
                     currentUserId={currentUserId}
                     onClose={() => setShowFriendRequests(false)}
                     onProfileClick={handleProfileClick}
+                    acceptedNotifications={acceptedNotifications}
+                    onDismissAccepted={(friendshipId) => {
+                      setSeenAcceptances(prev => [...prev, friendshipId]);
+                      setAcceptedNotifications(prev => prev.filter(n => n.id !== friendshipId));
+                    }}
+                    onDismissAllAccepted={() => {
+                      const ids = acceptedNotifications.map(n => n.id);
+                      setSeenAcceptances(prev => [...prev, ...ids]);
+                      setAcceptedNotifications([]);
+                    }}
                   />
                 )}
               </div>

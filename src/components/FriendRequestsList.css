@@ -148,6 +148,34 @@
   color: #1e293b;
 }
 
+/* Accepted notification styling */
+.accepted-notification {
+  background: #f0fdf4;
+  border-left: 3px solid #22c55e;
+}
+
+.accepted-notification:hover {
+  background: #dcfce7;
+}
+
+.dismiss-notif-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.85rem;
+  cursor: pointer;
+  padding: 0.25rem;
+  flex-shrink: 0;
+  border-radius: 4px;
+  transition: all 0.15s;
+  align-self: center;
+}
+
+.dismiss-notif-btn:hover {
+  background: #e2e8f0;
+  color: #475569;
+}
+
 /* Feature 6: Feedback messages */
 .friend-feedback-message {
   padding: 0.6rem 1rem;

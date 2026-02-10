@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import './FriendRequestsList.css';
 
-const FriendRequestsList = ({ currentUserId, onClose, onProfileClick }) => {
+const FriendRequestsList = ({ currentUserId, onClose, onProfileClick, acceptedNotifications = [], onDismissAccepted, onDismissAllAccepted }) => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [feedbackMessage, setFeedbackMessage] = useState(null);
@@ -95,13 +95,16 @@ const FriendRequestsList = ({ currentUserId, onClose, onProfileClick }) => {
       await supabase.from('friendships').delete().eq('id', req.id);
     }
     setRequests([]);
+    if (onDismissAllAccepted) onDismissAllAccepted();
   };
+
+  const totalNotifications = requests.length + acceptedNotifications.length;
 
   return (
     <div className="friend-requests-dropdown">
       <div className="friend-requests-header">
         <h3>Notifications</h3>
-        {requests.length > 0 && (
+        {totalNotifications > 0 && (
           <button className="clear-all-btn" onClick={handleClearAll}>
             Clear all
           </button>
@@ -118,51 +121,88 @@ const FriendRequestsList = ({ currentUserId, onClose, onProfileClick }) => {
       <div className="friend-requests-list">
         {loading ? (
           <div className="friend-requests-empty">Loading...</div>
-        ) : requests.length === 0 ? (
+        ) : totalNotifications === 0 ? (
           <div className="friend-requests-empty">No new notifications</div>
         ) : (
-          requests.map(request => (
-            <div key={request.id} className="friend-request-item">
-              <img
-                src={request.requester?.avatar_url || '/default-avatar.svg'}
-                alt={request.requester?.full_name || 'User'}
-                className="friend-request-avatar"
-                onClick={() => {
-                  onProfileClick(request.requester_id);
-                  onClose();
-                }}
-                onError={(e) => { e.target.src = '/default-avatar.svg'; }}
-              />
-              <div className="friend-request-info">
-                <span className="friend-request-text">
-                  <strong
-                    className="friend-request-name-link"
-                    onClick={() => {
-                      onProfileClick(request.requester_id);
-                      onClose();
-                    }}
-                  >
-                    {request.requester?.full_name || 'Someone'}
-                  </strong>
-                  {' '}has sent you a friend request
-                </span>
-                <div className="friend-request-actions-row">
-                  <button
-                    className="friend-action-accept"
-                    onClick={() => handleAccept(request.id)}
-                  >
-                    Accept
-                  </button>
-                  <button
-                    className="friend-action-decline"
-                    onClick={() => handleReject(request.id)}
-                  >
-                    Decline
-                  </button>
+          <>
+            {acceptedNotifications.map(notif => (
+              <div key={`accepted-${notif.id}`} className="friend-request-item accepted-notification">
+                <img
+                  src={notif.addressee?.avatar_url || '/default-avatar.svg'}
+                  alt={notif.addressee?.full_name || 'User'}
+                  className="friend-request-avatar"
+                  onClick={() => {
+                    onProfileClick(notif.addressee_id);
+                    onClose();
+                  }}
+                  onError={(e) => { e.target.src = '/default-avatar.svg'; }}
+                />
+                <div className="friend-request-info">
+                  <span className="friend-request-text">
+                    <strong
+                      className="friend-request-name-link"
+                      onClick={() => {
+                        onProfileClick(notif.addressee_id);
+                        onClose();
+                      }}
+                    >
+                      {notif.addressee?.full_name || 'Someone'}
+                    </strong>
+                    {' '}accepted your friend request
+                  </span>
+                </div>
+                <button
+                  className="dismiss-notif-btn"
+                  onClick={() => onDismissAccepted && onDismissAccepted(notif.id)}
+                  title="Dismiss"
+                >
+                  {'\u2715'}
+                </button>
+              </div>
+            ))}
+            {requests.map(request => (
+              <div key={request.id} className="friend-request-item">
+                <img
+                  src={request.requester?.avatar_url || '/default-avatar.svg'}
+                  alt={request.requester?.full_name || 'User'}
+                  className="friend-request-avatar"
+                  onClick={() => {
+                    onProfileClick(request.requester_id);
+                    onClose();
+                  }}
+                  onError={(e) => { e.target.src = '/default-avatar.svg'; }}
+                />
+                <div className="friend-request-info">
+                  <span className="friend-request-text">
+                    <strong
+                      className="friend-request-name-link"
+                      onClick={() => {
+                        onProfileClick(request.requester_id);
+                        onClose();
+                      }}
+                    >
+                      {request.requester?.full_name || 'Someone'}
+                    </strong>
+                    {' '}sent you a friend request
+                  </span>
+                  <div className="friend-request-actions-row">
+                    <button
+                      className="friend-action-accept"
+                      onClick={() => handleAccept(request.id)}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      className="friend-action-decline"
+                      onClick={() => handleReject(request.id)}
+                    >
+                      Decline
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))
+            ))}
+          </>
         )}
       </div>
     </div>
