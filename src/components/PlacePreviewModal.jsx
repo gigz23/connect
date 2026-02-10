@@ -13,7 +13,9 @@ const PlacePreviewModal = ({ place, onJoin, onClose, isFavorite, onToggleFavorit
   const [uploading, setUploading] = useState(false);
   const imageInputRef = useRef(null);
 
-  const canEditImage = !!currentUserId;
+  const isAdmin = currentUserId === ADMIN_USER_ID;
+  const isCreator = place.created_by && place.created_by === currentUserId;
+  const canEditImage = isAdmin || isCreator;
 
   useEffect(() => {
     getOnlineUserCount();
@@ -207,23 +209,6 @@ const PlacePreviewModal = ({ place, onJoin, onClose, isFavorite, onToggleFavorit
             onChange={handleImageChange}
           />
         </div>
-
-        {/* Pencil edit button below image for visibility */}
-        {canEditImage && (
-          <div className="edit-image-row">
-            <button
-              className="edit-image-text-btn"
-              onClick={() => imageInputRef.current?.click()}
-              disabled={uploading}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
-              {uploading ? 'Uploading...' : 'Change picture'}
-            </button>
-          </div>
-        )}
 
         <div className="preview-header">
           {currentImageUrl ? (
