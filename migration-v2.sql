@@ -19,33 +19,39 @@ CREATE INDEX IF NOT EXISTS idx_reactions_user_id ON message_reactions(user_id);
 -- Enable RLS
 ALTER TABLE message_reactions ENABLE ROW LEVEL SECURITY;
 
--- RLS Policies
-CREATE POLICY "Public read reactions" ON message_reactions
-  FOR SELECT USING (true);
+-- RLS Policies (safe for re-runs)
+DO '
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = ''Public read reactions'' AND tablename = ''message_reactions'') THEN
+    CREATE POLICY "Public read reactions" ON message_reactions FOR SELECT USING (true);
+  END IF;
+END;
+';
 
-CREATE POLICY "Auth insert reactions" ON message_reactions
-  FOR INSERT WITH CHECK (auth.uid() = user_id);
+DO '
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = ''Auth insert reactions'' AND tablename = ''message_reactions'') THEN
+    CREATE POLICY "Auth insert reactions" ON message_reactions FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+END;
+';
 
-CREATE POLICY "Auth delete own reactions" ON message_reactions
-  FOR DELETE USING (auth.uid() = user_id);
+DO '
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = ''Auth delete own reactions'' AND tablename = ''message_reactions'') THEN
+    CREATE POLICY "Auth delete own reactions" ON message_reactions FOR DELETE USING (auth.uid() = user_id);
+  END IF;
+END;
+';
 
 -- Enable Realtime
 ALTER PUBLICATION supabase_realtime ADD TABLE message_reactions;
 
 -- Allow updating messages (needed for unsend feature)
--- Check if policy already exists, if not create it
-DO $$
+DO '
 BEGIN
-  IF NOT EXISTS (
-    SELECT 1 FROM pg_policies WHERE policyname = 'Users can update own messages' AND tablename = 'messages'
-  ) THEN
-    EXECUTE 'CREATE POLICY "Users can update own messages" ON messages FOR UPDATE USING (auth.uid() = user_id)';
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname = ''Users can update own messages'' AND tablename = ''messages'') THEN
+    CREATE POLICY "Users can update own messages" ON messages FOR UPDATE USING (auth.uid() = user_id);
   END IF;
-END
-$$;
-
--- Enable email confirmation in Supabase:
--- Go to Supabase Dashboard > Authentication > Settings
--- Option 1: Disable "Confirm email" to auto-confirm users (for development)
--- Option 2: Configure SMTP settings under "Email" section for proper email delivery
--- Option 3: Use a custom SMTP provider (Resend, SendGrid, etc.) for production
+END;
+';

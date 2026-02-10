@@ -147,3 +147,33 @@
   background: #e2e8f0;
   color: #1e293b;
 }
+
+/* Feature 6: Feedback messages */
+.friend-feedback-message {
+  padding: 0.6rem 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+  font-weight: 600;
+  animation: feedbackSlide 0.3s ease-out;
+}
+
+.friend-feedback-message.accept {
+  background: #f0fdf4;
+  color: #16a34a;
+}
+
+.friend-feedback-message.decline {
+  background: #fef2f2;
+  color: #dc2626;
+}
+
+@keyframes feedbackSlide {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

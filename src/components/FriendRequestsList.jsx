@@ -5,6 +5,7 @@ import './FriendRequestsList.css';
 const FriendRequestsList = ({ currentUserId, onClose, onProfileClick }) => {
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [feedbackMessage, setFeedbackMessage] = useState(null);
 
   useEffect(() => {
     fetchRequests();
@@ -12,8 +13,15 @@ const FriendRequestsList = ({ currentUserId, onClose, onProfileClick }) => {
     return () => { cleanup(); };
   }, []);
 
+  // Auto-hide feedback after 2.5 seconds
+  useEffect(() => {
+    if (feedbackMessage) {
+      const timer = setTimeout(() => setFeedbackMessage(null), 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [feedbackMessage]);
+
   const fetchRequests = async () => {
-    // Fetch friendships first
     const { data: friendshipData } = await supabase
       .from('friendships')
       .select('*')
@@ -27,7 +35,6 @@ const FriendRequestsList = ({ currentUserId, onClose, onProfileClick }) => {
       return;
     }
 
-    // Fetch profiles for all requesters separately
     const requesterIds = friendshipData.map(f => f.requester_id);
     const { data: profilesData } = await supabase
       .from('profiles')
@@ -70,6 +77,7 @@ const FriendRequestsList = ({ currentUserId, onClose, onProfileClick }) => {
       .eq('id', friendshipId);
 
     setRequests(prev => prev.filter(r => r.id !== friendshipId));
+    setFeedbackMessage({ type: 'accept', text: 'Friend request accepted' });
   };
 
   const handleReject = async (friendshipId) => {
@@ -79,10 +87,10 @@ const FriendRequestsList = ({ currentUserId, onClose, onProfileClick }) => {
       .eq('id', friendshipId);
 
     setRequests(prev => prev.filter(r => r.id !== friendshipId));
+    setFeedbackMessage({ type: 'decline', text: 'Friend request denied' });
   };
 
   const handleClearAll = async () => {
-    // Reject all pending requests
     for (const req of requests) {
       await supabase.from('friendships').delete().eq('id', req.id);
     }
@@ -99,6 +107,13 @@ const FriendRequestsList = ({ currentUserId, onClose, onProfileClick }) => {
           </button>
         )}
       </div>
+
+      {/* Feature 6: Feedback message */}
+      {feedbackMessage && (
+        <div className={`friend-feedback-message ${feedbackMessage.type}`}>
+          {feedbackMessage.text}
+        </div>
+      )}
 
       <div className="friend-requests-list">
         {loading ? (

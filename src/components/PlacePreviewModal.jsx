@@ -6,11 +6,41 @@ const PlacePreviewModal = ({ place, onJoin, onClose, isFavorite, onToggleFavorit
   const [onlineUsers, setOnlineUsers] = useState(0);
   const [totalMembers, setTotalMembers] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [timeLeft, setTimeLeft] = useState(null);
 
   useEffect(() => {
     getOnlineUserCount();
     getTotalMembers();
   }, [place.id]);
+
+  // Countdown timer for temporary places
+  useEffect(() => {
+    if (!place.is_temporary || !place.expires_at) return;
+
+    const updateTimer = () => {
+      const now = new Date();
+      const expires = new Date(place.expires_at);
+      const diff = expires - now;
+
+      if (diff <= 0) {
+        setTimeLeft('Expired');
+        return;
+      }
+
+      const hours = Math.floor(diff / (1000 * 60 * 60));
+      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+      if (hours > 0) {
+        setTimeLeft(`${hours}h ${minutes}m left`);
+      } else {
+        setTimeLeft(`${minutes}m left`);
+      }
+    };
+
+    updateTimer();
+    const interval = setInterval(updateTimer, 60000);
+    return () => clearInterval(interval);
+  }, [place.is_temporary, place.expires_at]);
 
   const getOnlineUserCount = async () => {
     try {
@@ -49,41 +79,6 @@ const PlacePreviewModal = ({ place, onJoin, onClose, isFavorite, onToggleFavorit
     }
   };
 
-  const getPlaceEmoji = (type) => {
-    const icons = {
-      school: '\u{1F3EB}',
-      university: '\u{1F393}',
-      college: '\u{1F393}',
-      library: '\u{1F4DA}',
-      cafe: '\u{2615}',
-      coffee: '\u{2615}',
-      restaurant: '\u{1F37D}\u{FE0F}',
-      bar: '\u{1F37A}',
-      bakery: '\u{1F950}',
-      basketball_court: '\u{1F3C0}',
-      sports_court: '\u{1F3C0}',
-      tennis_court: '\u{1F3BE}',
-      gym: '\u{1F4AA}',
-      fitness: '\u{1F4AA}',
-      park: '\u{1F333}',
-      playground: '\u{1F3AA}',
-      pool: '\u{1F3CA}',
-      coworking: '\u{1F4BC}',
-      office: '\u{1F3E2}',
-      startup_hub: '\u{1F680}',
-      hospital: '\u{1F3E5}',
-      pharmacy: '\u{1F48A}',
-      church: '\u{26EA}',
-      museum: '\u{1F3DB}\u{FE0F}',
-      shopping: '\u{1F6CD}\u{FE0F}',
-      hotel: '\u{1F3E8}',
-      bank: '\u{1F3E6}',
-      market: '\u{1F3EA}',
-      cinema: '\u{1F3AC}'
-    };
-    return icons[type] || '\u{1F4CD}';
-  };
-
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="place-preview-modal" onClick={(e) => e.stopPropagation()}>
@@ -99,14 +94,41 @@ const PlacePreviewModal = ({ place, onJoin, onClose, isFavorite, onToggleFavorit
                 e.target.style.display = 'none';
               }}
             />
+            {place.is_temporary && timeLeft && (
+              <div className="preview-temp-badge">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/>
+                  <polyline points="12 6 12 12 16 14"/>
+                </svg>
+                {timeLeft}
+              </div>
+            )}
           </div>
         )}
 
         <div className="preview-header">
-          <div className="place-emoji">{getPlaceEmoji(place.type)}</div>
+          {place.image_url ? (
+            <div className="place-thumb">
+              <img
+                src={place.image_url}
+                alt={place.name}
+                onError={(e) => { e.target.style.display = 'none'; }}
+              />
+            </div>
+          ) : (
+            <div className="place-thumb place-thumb-default">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+                <circle cx="12" cy="10" r="3"/>
+              </svg>
+            </div>
+          )}
           <div>
             <h1 className="place-name">{place.name}</h1>
-            <p className="place-type">{place.type.replace('_', ' ')}</p>
+            <p className="place-type">
+              {place.type.replace('_', ' ')}
+              {place.is_temporary && <span className="place-type-temp"> &middot; Temporary</span>}
+            </p>
           </div>
         </div>
 
@@ -117,10 +139,10 @@ const PlacePreviewModal = ({ place, onJoin, onClose, isFavorite, onToggleFavorit
           </div>
         )}
 
-        {place.description && (
+        {(place.description || place.bio) && (
           <div className="preview-section">
             <h3>{'\u{2139}\u{FE0F}'} About</h3>
-            <p className="description">{place.description}</p>
+            <p className="description">{place.description || place.bio}</p>
           </div>
         )}
 

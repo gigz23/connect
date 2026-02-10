@@ -24,53 +24,62 @@
 .marker-pulse {
   position: absolute;
   top: 8px;
-  width: 24px;
-  height: 24px;
+  width: 28px;
+  height: 28px;
   border-radius: 50%;
-  opacity: 0.6;
+  opacity: 0.5;
   animation: pulse 2s infinite;
 }
 
 @keyframes pulse {
   0% {
     transform: scale(1);
-    opacity: 0.6;
+    opacity: 0.5;
   }
   50% {
-    transform: scale(1.5);
-    opacity: 0.3;
+    transform: scale(1.6);
+    opacity: 0.2;
   }
   100% {
     transform: scale(1);
-    opacity: 0.6;
+    opacity: 0.5;
   }
 }
 
-.marker-icon {
-  width: 40px;
-  height: 40px;
+/* Image-based marker icon */
+.marker-icon-img {
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.4rem;
-  background-color: #3b82f6;
-  border: 3px solid white;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  overflow: hidden;
+  border: 3px solid #94a3b8;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   cursor: pointer;
   transition: all 0.3s;
   z-index: 1;
+  background: #f1f5f9;
 }
 
-.marker-wrapper.selected .marker-icon {
-  transform: scale(1.2);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+.marker-icon-img img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.marker-wrapper.selected .marker-icon-img {
+  transform: scale(1.25);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
   border-color: #fbbf24;
   border-width: 4px;
 }
 
-.marker-icon:hover {
+.marker-icon-img:hover {
   transform: scale(1.15);
+}
+
+.marker-wrapper.selected .marker-icon-img:hover {
+  transform: scale(1.25);
 }
 
 .marker-label {
@@ -84,6 +93,9 @@
   white-space: nowrap;
   box-shadow: 0 1px 4px rgba(0, 0, 0, 0.15);
   pointer-events: none;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .marker-wrapper.selected .marker-label {
@@ -91,15 +103,81 @@
   color: #78350f;
 }
 
+/* Temporary place badge */
+.marker-temp-badge {
+  position: absolute;
+  top: -4px;
+  right: -8px;
+  background: #f59e0b;
+  color: white;
+  font-size: 0.55rem;
+  font-weight: 700;
+  padding: 1px 4px;
+  border-radius: 4px;
+  z-index: 2;
+  letter-spacing: 0.3px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+
+.marker-wrapper.temporary .marker-icon-img {
+  border-style: dashed;
+}
+
+/* Pending pin for place creation */
+.pending-pin-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  animation: pinDrop 0.4s ease-out;
+}
+
+@keyframes pinDrop {
+  0% {
+    transform: translateY(-20px);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(2px);
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.pending-pin-icon {
+  width: 40px;
+  height: 40px;
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 3px 10px rgba(239, 68, 68, 0.4);
+}
+
+.pending-pin-icon svg {
+  transform: rotate(45deg);
+}
+
+.pending-pin-shadow {
+  width: 14px;
+  height: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  margin-top: 2px;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
-  .marker-icon {
-    width: 36px;
-    height: 36px;
-    font-size: 1.2rem;
+  .marker-icon-img {
+    width: 38px;
+    height: 38px;
   }
 
   .marker-label {
     font-size: 0.65rem;
+    max-width: 100px;
   }
 }

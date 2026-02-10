@@ -5,22 +5,9 @@ import PlacePreviewModal from './components/PlacePreviewModal';
 import AuthModal from './components/AuthModal';
 import UserProfileModal from './components/UserProfileModal';
 import FriendRequestsList from './components/FriendRequestsList';
+import CreatePlaceModal from './components/CreatePlaceModal';
 import { supabase } from './lib/supabase';
 import './App.css';
-
-const getPlaceEmoji = (type) => {
-  const icons = {
-    school: '\u{1F3EB}', university: '\u{1F393}', college: '\u{1F393}', library: '\u{1F4DA}',
-    cafe: '\u{2615}', coffee: '\u{2615}', restaurant: '\u{1F37D}\u{FE0F}', bar: '\u{1F37A}',
-    bakery: '\u{1F950}', basketball_court: '\u{1F3C0}', sports_court: '\u{1F3C0}',
-    tennis_court: '\u{1F3BE}', gym: '\u{1F4AA}', fitness: '\u{1F4AA}', park: '\u{1F333}',
-    playground: '\u{1F3AA}', pool: '\u{1F3CA}', coworking: '\u{1F4BC}', office: '\u{1F3E2}',
-    startup_hub: '\u{1F680}', hospital: '\u{1F3E5}', pharmacy: '\u{1F48A}', church: '\u{26EA}',
-    museum: '\u{1F3DB}\u{FE0F}', shopping: '\u{1F6CD}\u{FE0F}', hotel: '\u{1F3E8}',
-    bank: '\u{1F3E6}', market: '\u{1F3EA}', cinema: '\u{1F3AC}'
-  };
-  return icons[type] || '\u{1F4CD}';
-};
 
 function App() {
   const [session, setSession] = useState(null);
@@ -48,9 +35,15 @@ function App() {
   });
   const [showFavoritesPanel, setShowFavoritesPanel] = useState(false);
 
+  // Create place mode
+  const [createMode, setCreateMode] = useState(false);
+  const [pendingPin, setPendingPin] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
   const friendReqChannelRef = useRef(null);
   const notificationRef = useRef(null);
   const searchRef = useRef(null);
+  const expiryIntervalRef = useRef(null);
 
   useEffect(() => {
     loadPlaces();
@@ -84,10 +77,19 @@ function App() {
 
     init();
 
+    // Periodic cleanup of expired temporary places (client-side filter)
+    expiryIntervalRef.current = setInterval(() => {
+      setPlaces(prev => prev.filter(p => {
+        if (!p.is_temporary || !p.expires_at) return true;
+        return new Date(p.expires_at) > new Date();
+      }));
+    }, 60000);
+
     return () => {
       cleanup?.();
       authSubscription?.unsubscribe?.();
       cleanupFriendReqSubscription();
+      if (expiryIntervalRef.current) clearInterval(expiryIntervalRef.current);
     };
   }, []);
 
@@ -213,7 +215,12 @@ function App() {
       .select('*');
 
     if (data) {
-      setPlaces(data);
+      // Filter out expired temporary places
+      const active = data.filter(p => {
+        if (!p.is_temporary || !p.expires_at) return true;
+        return new Date(p.expires_at) > new Date();
+      });
+      setPlaces(active);
     }
   };
 
@@ -223,14 +230,26 @@ function App() {
       .on('postgres_changes',
         { event: '*', schema: 'public', table: 'places' },
         (payload) => {
-          setPlaces(prev => {
-            const updated = [...prev];
-            const index = updated.findIndex(p => p.id === payload.new.id);
-            if (index >= 0) {
-              updated[index] = payload.new;
-            }
-            return updated;
-          });
+          if (payload.eventType === 'INSERT') {
+            // New place created - add it
+            const newPlace = payload.new;
+            if (newPlace.is_temporary && newPlace.expires_at && new Date(newPlace.expires_at) <= new Date()) return;
+            setPlaces(prev => {
+              if (prev.find(p => p.id === newPlace.id)) return prev;
+              return [...prev, newPlace];
+            });
+          } else if (payload.eventType === 'DELETE') {
+            setPlaces(prev => prev.filter(p => p.id !== payload.old.id));
+          } else {
+            setPlaces(prev => {
+              const updated = [...prev];
+              const index = updated.findIndex(p => p.id === payload.new.id);
+              if (index >= 0) {
+                updated[index] = payload.new;
+              }
+              return updated;
+            });
+          }
         }
       )
       .subscribe();
@@ -311,8 +330,45 @@ function App() {
     setJoinedPlace(place);
   };
 
-  const favoritePlaces = places.filter(p => favorites.includes(p.id));
+  // Create place
+  const handleStartCreateMode = () => {
+    if (!session) {
+      setShowAuthModal(true);
+      return;
+    }
+    setCreateMode(true);
+    setPendingPin(null);
+    setShowCreateModal(false);
+  };
 
+  const handleMapClick = (latlng) => {
+    if (createMode) {
+      setPendingPin(latlng);
+      setShowCreateModal(true);
+      setCreateMode(false);
+    }
+  };
+
+  const handleCancelCreate = () => {
+    setCreateMode(false);
+    setPendingPin(null);
+    setShowCreateModal(false);
+  };
+
+  const handlePlaceCreated = (newPlace) => {
+    setShowCreateModal(false);
+    setPendingPin(null);
+    setCreateMode(false);
+    // Place will be added via realtime subscription, but add immediately for responsiveness
+    setPlaces(prev => {
+      if (prev.find(p => p.id === newPlace.id)) return prev;
+      return [...prev, newPlace];
+    });
+    setFlyToPlace(newPlace);
+    setPreviewedPlace(newPlace);
+  };
+
+  const favoritePlaces = places.filter(p => favorites.includes(p.id));
   const currentUserId = session?.user?.id;
 
   return (
@@ -345,7 +401,13 @@ function App() {
                   className="search-result-item"
                   onClick={() => handleSearchSelect(place)}
                 >
-                  <span className="search-result-emoji">{getPlaceEmoji(place.type)}</span>
+                  <div className="search-result-thumb">
+                    {place.image_url ? (
+                      <img src={place.image_url} alt="" onError={(e) => { e.target.style.display = 'none'; }} />
+                    ) : (
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    )}
+                  </div>
                   <div className="search-result-info">
                     <div className="search-result-name">{place.name}</div>
                     <div className="search-result-type">{place.type.replace('_', ' ')}</div>
@@ -411,7 +473,25 @@ function App() {
           selectedPlace={joinedPlace}
           onPlaceSelect={handlePlaceSelect}
           flyToPlace={flyToPlace}
+          createMode={createMode}
+          onMapClick={handleMapClick}
+          pendingPin={pendingPin}
         />
+
+        {/* Create place banner */}
+        {!createMode && !showCreateModal && session && (
+          <div className="create-place-banner" onClick={handleStartCreateMode}>
+            <span className="create-place-text">Create your own place</span>
+          </div>
+        )}
+
+        {/* Create mode instructions */}
+        {createMode && (
+          <div className="create-mode-banner">
+            <span>Click anywhere on the map to place your pin</span>
+            <button className="create-mode-cancel" onClick={handleCancelCreate}>Cancel</button>
+          </div>
+        )}
 
         {previewedPlace && (
           <PlacePreviewModal
@@ -433,23 +513,36 @@ function App() {
           />
         )}
 
-        {/* Favorites FAB */}
+        {showCreateModal && pendingPin && (
+          <CreatePlaceModal
+            latlng={pendingPin}
+            userId={currentUserId}
+            onClose={handleCancelCreate}
+            onPlaceCreated={handlePlaceCreated}
+          />
+        )}
+
+        {/* Favorites FAB - redesigned: round with building icon, no badge count */}
         <button
           className="favorites-fab"
           onClick={() => setShowFavoritesPanel(prev => !prev)}
           title="Favorite places"
         >
-          {'\u{1F4AC}'}
-          {favoritePlaces.length > 0 && (
-            <span className="fab-badge">{favoritePlaces.length}</span>
-          )}
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 21h18"/>
+            <path d="M5 21V7l8-4v18"/>
+            <path d="M19 21V11l-6-4"/>
+            <path d="M9 9v.01"/>
+            <path d="M9 12v.01"/>
+            <path d="M9 15v.01"/>
+          </svg>
         </button>
 
         {/* Favorites panel */}
         {showFavoritesPanel && (
           <div className="favorites-panel">
             <div className="favorites-panel-header">
-              <h3>{'\u{2B50}'} Favorite Places</h3>
+              <h3>Favorite Places</h3>
               <button
                 className="favorites-panel-close"
                 onClick={() => setShowFavoritesPanel(false)}
@@ -470,7 +563,13 @@ function App() {
                     className="favorite-item"
                     onClick={() => handleFavoriteClick(place)}
                   >
-                    <div className="favorite-item-emoji">{getPlaceEmoji(place.type)}</div>
+                    <div className="favorite-item-thumb">
+                      {place.image_url ? (
+                        <img src={place.image_url} alt="" onError={(e) => { e.target.src = ''; e.target.style.display = 'none'; }} />
+                      ) : (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                      )}
+                    </div>
                     <div className="favorite-item-info">
                       <div className="favorite-item-name">{place.name}</div>
                       <div className="favorite-item-type">{place.type.replace('_', ' ')}</div>

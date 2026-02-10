@@ -16,6 +16,10 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
   const [showCameraMenu, setShowCameraMenu] = useState(false);
   const [showMessageMenu, setShowMessageMenu] = useState(null);
   const [showReactionPicker, setShowReactionPicker] = useState(null);
+  const [showReactionUsers, setShowReactionUsers] = useState(null);
+  const [mediaPreview, setMediaPreview] = useState(null);
+  const [mediaFile, setMediaFile] = useState(null);
+  const [sendingMedia, setSendingMedia] = useState(false);
   const messagesEndRef = useRef(null);
   const channelRef = useRef(null);
   const profileCacheRef = useRef({});
@@ -51,6 +55,7 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
       setShowMessageMenu(null);
       setShowReactionPicker(null);
       setShowCameraMenu(false);
+      setShowReactionUsers(null);
     };
     document.addEventListener('click', handleClick);
     return () => document.removeEventListener('click', handleClick);
@@ -93,7 +98,7 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
         setReactions(grouped);
       }
     } catch (e) {
-      // Table might not exist yet - that's ok
+      // Table might not exist yet
     }
   };
 
@@ -174,6 +179,13 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
+
+    // If there's a media preview, send the media
+    if (mediaFile) {
+      await sendMediaMessage();
+      return;
+    }
+
     const trimmed = newMessage.trim();
     if (!trimmed || trimmed.length > MAX_MESSAGE_LENGTH) return;
 
@@ -208,7 +220,6 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
     );
 
     if (existing) {
-      // Remove reaction
       setReactions(prev => {
         const updated = { ...prev };
         updated[messageId] = (updated[messageId] || []).filter(
@@ -224,7 +235,6 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
           .eq('emoji', emoji);
       } catch (e) { /* table might not exist */ }
     } else {
-      // Add reaction
       const newReaction = { user_id: userId, emoji, username, message_id: messageId };
       setReactions(prev => ({
         ...prev,
@@ -244,7 +254,8 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
     setShowMessageMenu(null);
   };
 
-  const handleMediaUpload = async (file) => {
+  // Feature 3: Media preview before sending
+  const handleMediaSelect = (file) => {
     if (!file) return;
 
     const isImage = file.type.startsWith('image/');
@@ -260,15 +271,41 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
       return;
     }
 
-    const ext = file.name.split('.').pop();
+    setMediaFile(file);
+    setShowCameraMenu(false);
+
+    // Create preview URL
+    const previewUrl = URL.createObjectURL(file);
+    setMediaPreview({
+      url: previewUrl,
+      type: isImage ? 'image' : 'video',
+      name: file.name
+    });
+  };
+
+  const clearMediaPreview = () => {
+    if (mediaPreview?.url) {
+      URL.revokeObjectURL(mediaPreview.url);
+    }
+    setMediaPreview(null);
+    setMediaFile(null);
+  };
+
+  const sendMediaMessage = async () => {
+    if (!mediaFile || sendingMedia) return;
+    setSendingMedia(true);
+
+    const isImage = mediaFile.type.startsWith('image/');
+    const ext = mediaFile.name.split('.').pop();
     const filePath = `chat-media/${place.id}/${userId}/${Date.now()}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
       .from('avatars')
-      .upload(filePath, file);
+      .upload(filePath, mediaFile);
 
     if (uploadError) {
       alert('Upload failed: ' + uploadError.message);
+      setSendingMedia(false);
       return;
     }
 
@@ -288,7 +325,8 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
       created_at: new Date().toISOString()
     });
 
-    setShowCameraMenu(false);
+    clearMediaPreview();
+    setSendingMedia(false);
   };
 
   const groupReactions = (reactionsList) => {
@@ -466,19 +504,26 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
                       {renderMessageContent(msg)}
                     </div>
 
-                    {/* Always-visible action buttons (like Facebook) */}
+                    {/* Action buttons */}
                     {!isUnsent && (
                       <div className="message-actions-inline" onClick={e => e.stopPropagation()}>
+                        {/* Feature 5: Neutral react button (not a laughing emoji) */}
                         <button
                           className="inline-react-btn"
                           onClick={(e) => {
                             e.stopPropagation();
                             setShowReactionPicker(showReactionPicker === msg.id ? null : msg.id);
                             setShowMessageMenu(null);
+                            setShowReactionUsers(null);
                           }}
                           title="React"
                         >
-                          {'\u{1F600}'}
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="10"/>
+                            <line x1="8" y1="15" x2="16" y2="15"/>
+                            <line x1="9" y1="9" x2="9.01" y2="9"/>
+                            <line x1="15" y1="9" x2="15.01" y2="9"/>
+                          </svg>
                         </button>
                         {isOwn && (
                           <button
@@ -487,6 +532,7 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
                               e.stopPropagation();
                               setShowMessageMenu(showMessageMenu === msg.id ? null : msg.id);
                               setShowReactionPicker(null);
+                              setShowReactionUsers(null);
                             }}
                             title="More options"
                           >
@@ -515,7 +561,13 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
                               setShowReactionPicker(msg.id);
                               setShowMessageMenu(null);
                             }}>
-                              {'\u{1F600}'} React
+                              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <circle cx="12" cy="12" r="10"/>
+                                <line x1="8" y1="15" x2="16" y2="15"/>
+                                <line x1="9" y1="9" x2="9.01" y2="9"/>
+                                <line x1="15" y1="9" x2="15.01" y2="9"/>
+                              </svg>
+                              React
                             </button>
                             <button
                               className="unsend-btn"
@@ -528,20 +580,50 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
                       </div>
                     )}
 
+                    {/* Feature 4: Reactions with clickable user names */}
                     {msgReactions.length > 0 && (
                       <div className="message-reactions">
-                        {msgReactions.map(({ emoji, count, hasOwn }) => (
+                        {msgReactions.map(({ emoji, count, hasOwn, users }) => (
                           <span
                             key={emoji}
                             className={`reaction-badge ${hasOwn ? 'own-reaction' : ''}`}
                             onClick={(e) => {
                               e.stopPropagation();
-                              handleReaction(msg.id, emoji);
+                              const key = `${msg.id}-${emoji}`;
+                              if (showReactionUsers === key) {
+                                setShowReactionUsers(null);
+                              } else {
+                                setShowReactionUsers(key);
+                              }
                             }}
-                            title={`React with ${emoji}`}
                           >
                             {emoji}
                             {count > 1 && <span className="reaction-count">{count}</span>}
+
+                            {/* Reaction users popup */}
+                            {showReactionUsers === `${msg.id}-${emoji}` && (
+                              <div className="reaction-users-popup" onClick={e => e.stopPropagation()}>
+                                <div className="reaction-users-header">
+                                  <span className="reaction-users-emoji">{emoji}</span>
+                                  <span className="reaction-users-count">{count}</span>
+                                </div>
+                                <div className="reaction-users-list">
+                                  {users.map((name, i) => (
+                                    <div key={i} className="reaction-user-name">{name}</div>
+                                  ))}
+                                </div>
+                                <button
+                                  className="reaction-toggle-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleReaction(msg.id, emoji);
+                                    setShowReactionUsers(null);
+                                  }}
+                                >
+                                  {hasOwn ? 'Remove your reaction' : 'React with ' + emoji}
+                                </button>
+                              </div>
+                            )}
                           </span>
                         ))}
                       </div>
@@ -554,6 +636,26 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
         )}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Feature 3: Media preview area */}
+      {mediaPreview && (
+        <div className="media-preview-bar">
+          <div className="media-preview-content">
+            {mediaPreview.type === 'image' ? (
+              <img src={mediaPreview.url} alt="Preview" className="media-preview-thumb" />
+            ) : (
+              <video src={mediaPreview.url} className="media-preview-thumb" />
+            )}
+            <div className="media-preview-info">
+              <span className="media-preview-name">{mediaPreview.name}</span>
+              <span className="media-preview-type">{mediaPreview.type}</span>
+            </div>
+          </div>
+          <button className="media-preview-remove" onClick={clearMediaPreview}>
+            {'\u2715'}
+          </button>
+        </div>
+      )}
 
       <form className="message-input-container" onSubmit={handleSendMessage}>
         <div style={{ position: 'relative' }}>
@@ -605,7 +707,7 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
           )}
         </div>
 
-        {/* Hidden file inputs */}
+        {/* Hidden file inputs - now use handleMediaSelect for preview */}
         <input
           ref={cameraInputRef}
           type="file"
@@ -613,7 +715,7 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
           capture="environment"
           style={{ display: 'none' }}
           onChange={(e) => {
-            handleMediaUpload(e.target.files?.[0]);
+            handleMediaSelect(e.target.files?.[0]);
             e.target.value = '';
           }}
         />
@@ -623,7 +725,7 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
           accept="image/*,video/*"
           style={{ display: 'none' }}
           onChange={(e) => {
-            handleMediaUpload(e.target.files?.[0]);
+            handleMediaSelect(e.target.files?.[0]);
             e.target.value = '';
           }}
         />
@@ -633,9 +735,10 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
             type="text"
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
-            placeholder={`Message ${place.name}...`}
+            placeholder={mediaPreview ? 'Press Send to share media...' : `Message ${place.name}...`}
             className="message-input"
             maxLength={MAX_MESSAGE_LENGTH}
+            disabled={!!mediaPreview}
           />
           {newMessage.length > MAX_MESSAGE_LENGTH * 0.8 && (
             <span className="char-count">
@@ -643,8 +746,12 @@ const ChatPanel = ({ place, username, userId, onClose, onProfileClick }) => {
             </span>
           )}
         </div>
-        <button type="submit" className="send-btn" disabled={!newMessage.trim()}>
-          Send
+        <button
+          type="submit"
+          className="send-btn"
+          disabled={(!newMessage.trim() && !mediaPreview) || sendingMedia}
+        >
+          {sendingMedia ? '...' : 'Send'}
         </button>
       </form>
     </div>
