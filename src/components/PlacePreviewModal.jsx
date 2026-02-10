@@ -13,9 +13,7 @@ const PlacePreviewModal = ({ place, onJoin, onClose, isFavorite, onToggleFavorit
   const [uploading, setUploading] = useState(false);
   const imageInputRef = useRef(null);
 
-  const isAdmin = currentUserId === ADMIN_USER_ID;
-  const isCreator = place.created_by && place.created_by === currentUserId;
-  const canEditImage = isAdmin || isCreator;
+  const canEditImage = !!currentUserId;
 
   useEffect(() => {
     getOnlineUserCount();
