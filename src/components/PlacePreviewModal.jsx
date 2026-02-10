@@ -11,6 +11,7 @@ const PlacePreviewModal = ({ place, onJoin, onClose, isFavorite, onToggleFavorit
   const [timeLeft, setTimeLeft] = useState(null);
   const [currentImageUrl, setCurrentImageUrl] = useState(place.image_url);
   const [uploading, setUploading] = useState(false);
+  const [creatorProfile, setCreatorProfile] = useState(null);
   const imageInputRef = useRef(null);
 
   const isAdmin = currentUserId === ADMIN_USER_ID;
@@ -20,6 +21,9 @@ const PlacePreviewModal = ({ place, onJoin, onClose, isFavorite, onToggleFavorit
   useEffect(() => {
     getOnlineUserCount();
     getTotalMembers();
+    if (place.created_by) {
+      getCreatorProfile();
+    }
   }, [place.id]);
 
   useEffect(() => {
@@ -89,6 +93,22 @@ const PlacePreviewModal = ({ place, onJoin, onClose, isFavorite, onToggleFavorit
       }
     } catch (error) {
       console.error('Error getting total members:', error);
+    }
+  };
+
+  const getCreatorProfile = async () => {
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('full_name, avatar_url')
+        .eq('id', place.created_by)
+        .single();
+
+      if (data) {
+        setCreatorProfile(data);
+      }
+    } catch (error) {
+      console.error('Error getting creator profile:', error);
     }
   };
 
@@ -263,6 +283,30 @@ const PlacePreviewModal = ({ place, onJoin, onClose, isFavorite, onToggleFavorit
           <div className="preview-section">
             <h3>{'\u{2139}\u{FE0F}'} About</h3>
             <p className="description">{place.description || place.bio}</p>
+          </div>
+        )}
+
+        {place.created_by && creatorProfile && (
+          <div className="preview-section">
+            <div className="created-by">
+              <div className="creator-avatar">
+                {creatorProfile.avatar_url ? (
+                  <img
+                    src={creatorProfile.avatar_url}
+                    alt={creatorProfile.full_name || 'Creator'}
+                    onError={(e) => { e.target.style.display = 'none'; }}
+                  />
+                ) : (
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                  </svg>
+                )}
+              </div>
+              <span className="created-by-text">
+                Created by <strong>{creatorProfile.full_name || 'Unknown'}</strong>
+              </span>
+            </div>
           </div>
         )}
 
