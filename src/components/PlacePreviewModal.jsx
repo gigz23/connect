@@ -13,6 +13,7 @@ const PlacePreviewModal = ({ place, onJoin, onClose, isFavorite, onToggleFavorit
   const [uploading, setUploading] = useState(false);
   const imageInputRef = useRef(null);
 
+  console.log('DEBUG currentUserId:', currentUserId, 'ADMIN_USER_ID:', ADMIN_USER_ID, 'place.created_by:', place.created_by);
   const isAdmin = currentUserId === ADMIN_USER_ID;
   const isCreator = place.created_by && place.created_by === currentUserId;
   const canEditImage = isAdmin || isCreator;
