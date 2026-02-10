@@ -173,15 +173,35 @@ function App() {
     const { user } = currentSession;
     const meta = user.user_metadata || {};
 
-    await supabase
+    // Check if profile already exists
+    const { data: existing } = await supabase
       .from('profiles')
-      .upsert({
-        id: user.id,
-        full_name: meta.full_name || meta.name || null,
-        avatar_url: meta.avatar_url || null,
-        email: user.email || null,
-        updated_at: new Date().toISOString()
-      });
+      .select('id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (existing) {
+      // Profile exists - update name/email but preserve custom avatar_url
+      await supabase
+        .from('profiles')
+        .update({
+          full_name: meta.full_name || meta.name || null,
+          email: user.email || null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', user.id);
+    } else {
+      // New user - create profile with OAuth data including avatar
+      await supabase
+        .from('profiles')
+        .insert({
+          id: user.id,
+          full_name: meta.full_name || meta.name || null,
+          avatar_url: meta.avatar_url || null,
+          email: user.email || null,
+          updated_at: new Date().toISOString()
+        });
+    }
   };
 
   const fetchFullProfile = async (uid) => {
