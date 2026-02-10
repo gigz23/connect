@@ -91,6 +91,57 @@
   display: block;
 }
 
+.preview-image-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f1f5f9;
+}
+
+/* Edit image button */
+.edit-image-btn {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  z-index: 2;
+  backdrop-filter: blur(4px);
+}
+
+.edit-image-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.8);
+}
+
+.edit-image-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.edit-image-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 /* Content wrapper */
 .place-preview-modal > *:not(.close-btn):not(.preview-image-container) {
   padding: 0 2rem;

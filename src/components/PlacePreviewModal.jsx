@@ -1,17 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import './PlacePreviewModal.css';
 
-const PlacePreviewModal = ({ place, onJoin, onClose, isFavorite, onToggleFavorite }) => {
+const ADMIN_USER_ID = '2ad81a31-80c4-457d-983b-a71ccb417b4f';
+
+const PlacePreviewModal = ({ place, onJoin, onClose, isFavorite, onToggleFavorite, currentUserId, onPlaceUpdate }) => {
   const [onlineUsers, setOnlineUsers] = useState(0);
   const [totalMembers, setTotalMembers] = useState(0);
   const [loading, setLoading] = useState(true);
   const [timeLeft, setTimeLeft] = useState(null);
+  const [currentImageUrl, setCurrentImageUrl] = useState(place.image_url);
+  const [uploading, setUploading] = useState(false);
+  const imageInputRef = useRef(null);
+
+  const isAdmin = currentUserId === ADMIN_USER_ID;
+  const isCreator = place.created_by && place.created_by === currentUserId;
+  const canEditImage = isAdmin || isCreator;
 
   useEffect(() => {
     getOnlineUserCount();
     getTotalMembers();
   }, [place.id]);
+
+  useEffect(() => {
+    setCurrentImageUrl(place.image_url);
+  }, [place.image_url]);
 
   // Countdown timer for temporary places
   useEffect(() => {
@@ -79,38 +92,129 @@ const PlacePreviewModal = ({ place, onJoin, onClose, isFavorite, onToggleFavorit
     }
   };
 
+  const handleImageChange = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please select an image file');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert('Image must be under 5MB');
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `place-images/${place.id}/${Date.now()}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('avatars')
+        .upload(filePath, file);
+
+      if (uploadError) {
+        alert('Upload failed: ' + uploadError.message);
+        setUploading(false);
+        return;
+      }
+
+      const { data: urlData } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+
+      const newUrl = urlData.publicUrl;
+
+      const { error: updateError } = await supabase
+        .from('places')
+        .update({ image_url: newUrl })
+        .eq('id', place.id);
+
+      if (updateError) {
+        alert('Failed to update image: ' + updateError.message);
+        setUploading(false);
+        return;
+      }
+
+      setCurrentImageUrl(newUrl);
+      if (onPlaceUpdate) {
+        onPlaceUpdate(place.id, { image_url: newUrl });
+      }
+    } catch (err) {
+      alert('Something went wrong');
+    }
+
+    setUploading(false);
+    if (imageInputRef.current) imageInputRef.current.value = '';
+  };
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="place-preview-modal" onClick={(e) => e.stopPropagation()}>
         <button className="close-btn" onClick={onClose}>{'\u2715'}</button>
 
-        {place.image_url && (
-          <div className="preview-image-container">
+        <div className="preview-image-container">
+          {currentImageUrl ? (
             <img
-              src={place.image_url}
+              src={currentImageUrl}
               alt={place.name}
               className="preview-image"
               onError={(e) => {
                 e.target.style.display = 'none';
               }}
             />
-            {place.is_temporary && timeLeft && (
-              <div className="preview-temp-badge">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="10"/>
-                  <polyline points="12 6 12 12 16 14"/>
+          ) : (
+            <div className="preview-image-placeholder">
+              <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+            </div>
+          )}
+          {place.is_temporary && timeLeft && (
+            <div className="preview-temp-badge">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
+              </svg>
+              {timeLeft}
+            </div>
+          )}
+          {canEditImage && (
+            <button
+              className="edit-image-btn"
+              onClick={() => imageInputRef.current?.click()}
+              disabled={uploading}
+              title="Change image"
+            >
+              {uploading ? (
+                <span className="edit-image-spinner" />
+              ) : (
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <circle cx="12" cy="13" r="4"/>
                 </svg>
-                {timeLeft}
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </button>
+          )}
+          <input
+            ref={imageInputRef}
+            type="file"
+            accept="image/*"
+            style={{ display: 'none' }}
+            onChange={handleImageChange}
+          />
+        </div>
 
         <div className="preview-header">
-          {place.image_url ? (
+          {currentImageUrl ? (
             <div className="place-thumb">
               <img
-                src={place.image_url}
+                src={currentImageUrl}
                 alt={place.name}
                 onError={(e) => { e.target.style.display = 'none'; }}
               />

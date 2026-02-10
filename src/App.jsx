@@ -500,6 +500,13 @@ function App() {
             onClose={handleClosePreview}
             isFavorite={favorites.includes(previewedPlace.id)}
             onToggleFavorite={handleToggleFavorite}
+            currentUserId={currentUserId}
+            onPlaceUpdate={(placeId, updates) => {
+              setPlaces(prev => prev.map(p =>
+                p.id === placeId ? { ...p, ...updates } : p
+              ));
+              setPreviewedPlace(prev => prev && prev.id === placeId ? { ...prev, ...updates } : prev);
+            }}
           />
         )}
 
